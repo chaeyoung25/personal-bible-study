@@ -1,4 +1,4 @@
-const CACHE = 'bible-shell-fb8aff9457c605a3';
+const CACHE = 'bible-shell-71555f6af687bf23';
 const ASSETS = ["./.nojekyll", "./app.js", "./books.json", "./browser.js", "./cloud.css", "./db-worker.js", "./index.html", "./manifest.webmanifest", "./panes.js", "./research.js", "./responsive.css", "./responsive.js", "./styles.css", "./topics.js", "./topics.json", "./vendor/LICENSE", "./vendor/sql-wasm.js", "./vendor/sql-wasm.wasm"];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('bible-shell-') && k !== CACHE).map(k => caches.delete(k))))));

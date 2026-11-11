@@ -87,6 +87,15 @@ const find=name=>path.join(fixtures,fs.readdirSync(fixtures).find(file=>file.nor
   await page.waitForFunction(()=>document.querySelector("#cloudStatus").textContent.includes("새 백업"));
   assert.equal(uploads,1);
   assert(!JSON.stringify(await page.evaluate(()=>({...localStorage}))).includes("test-access-memory-only"));
+  const transfer=await context.newPage();
+  transfer.on("dialog",dialog=>dialog.accept());
+  const setup={clientId:"12345-unit.apps.googleusercontent.com",pickerKey:"AIza-test-picker-key",project:"12345"};
+  await transfer.goto("http://localhost:8806/#setup="+encodeURIComponent(JSON.stringify(setup)));
+  await transfer.locator("#cloudDialog").waitFor({state:"visible"});
+  assert.equal(await transfer.locator("#oauthClientId").inputValue(),setup.clientId);
+  assert.equal(await transfer.evaluate(()=>location.hash),"");
+  assert(!transfer.url().includes("AIza"));
+  await transfer.close();
   account="account-two";
   await page.locator("#disconnectDrive").click();await page.locator("#connectDrive").click();
   await page.waitForFunction(()=>document.querySelector("#cloudStatus").textContent.includes("다른 Google 계정"));

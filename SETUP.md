@@ -16,6 +16,21 @@
    여러 기기의 변경을 자동 병합하지 않으므로 순서대로 작업해 주세요.
 9. 공용 기기에서는 사용 후 이 기기의 자료 모두 삭제를 실행합니다.
 
+## 게시된 주소
+
+https://chaeyoung25.github.io/personal-bible-study/
+
+Google 웹 OAuth의 승인된 JavaScript 원본에 https://chaeyoung25.github.io 를
+추가하고, Picker API 키의 웹사이트 제한에 https://chaeyoung25.github.io/* 를
+추가합니다. localhost와 docs.google.com 항목, API 제한은 유지하세요.
+이 설정은 Google Cloud 계정 소유자만 변경할 수 있습니다.
+
+로컬 시험 앱에서 Drive 자료 관리 > 인터넷 사이트 열기를 누르면 공개 연결설정
+3가지만 새 사이트로 전달됩니다. 받는 쪽에서 확인 후 주소 조각을 즉시 지웁니다.
+토큰·개인 자료는 포함되지 않으며 설정은 GitHub에 게시되지 않습니다.
+다른 기기용 연결설정 링크 복사를 사용해 본인 휴대폰에 전달할 수도 있습니다.
+이 링크는 공개 게시하지 마세요. 새 기기에서 본인 Google 로그인은 필요합니다.
+
 계정 비밀번호·인증 코드·클라이언트 보안 비밀을 앱이나 채팅에 입력하지 마세요.
 Google 로그인과 실제 Drive 연결은 Google 설정을 마친 뒤 최종 확인해야 합니다.
 

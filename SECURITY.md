@@ -3,6 +3,10 @@
 - Public source contains no Bible databases, scores, notes, tokens, passwords,
   screenshots, backups or account-specific settings.
 - Public code is not a private login wall. Google authorizes private data access.
+- Optional setup handoff uses a URL fragment containing only public OAuth client
+  ID, restricted browser Picker API key and project number. It is stripped before
+  initialization and never contains a token, notes, identity or private dataset.
+  Recipients confirm import. Treat the link as personal setup, not a public post.
   Never make Drive originals link-public.
 - Google Identity Services token model: no client secret/refresh token,
   access token in memory only; drive.file and openid/email scopes.

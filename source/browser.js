@@ -3,6 +3,7 @@ window.BrowserBible = (() => {
   "use strict";
   const DB_NAME = "personal-bible-private-v1";
   const BASE = new URL("./", document.currentScript.src);
+  const PUBLISHED = "https://chaeyoung25.github.io/personal-bible-study/";
   const $c = id => document.getElementById(id);
   const emptyNotes = () => ({bookmarks:[],notes:{},tags:{},highlights:{},underlines:{},updated:{},annotations:[]});
   let db, worker, requestId = 0, token = "", tokenExpires = 0, running = false, busy = false;
@@ -323,6 +324,17 @@ window.BrowserBible = (() => {
     location.reload();
   }
   async function start(init){
+    let transferredSettings=null;
+    if(location.hash.startsWith("#setup=")){
+      const raw=location.hash.slice(7);
+      history.replaceState(null,"",location.pathname+location.search);
+      try {
+        if(raw.length>8000)throw Error("설정 링크가 너무 깁니다.");
+        transferredSettings=JSON.parse(decodeURIComponent(raw));
+        assertSafeObject(transferredSettings);
+        if(!transferredSettings || Object.keys(transferredSettings).some(key=>!["clientId","pickerKey","project"].includes(key)))throw Error("설정 링크 형식 오류");
+      }catch(error){transferredSettings=null;status("잘못된 연결설정 링크입니다. 직접 설정을 입력해 주세요.");}
+    }
     addEventListener("pageshow",event=>{if(event.persisted)location.reload();});
     readerInit=init;await openDB();
     if(navigator.locks) {
@@ -343,6 +355,13 @@ window.BrowserBible = (() => {
     await inventory();
     const settings=await storeGet("kv","public-config")||{};
     $c("oauthClientId").value=settings.clientId||"";$c("pickerKey").value=settings.pickerKey||"";$c("projectNumber").value=settings.project||"";
+    if(transferredSettings && confirm("전달받은 Google 연결설정을 이 기기에 저장할까요? 로그인 권한이나 개인 자료는 전달되지 않습니다.")){
+      $c("oauthClientId").value=transferredSettings.clientId||"";
+      $c("pickerKey").value=transferredSettings.pickerKey||"";
+      $c("projectNumber").value=transferredSettings.project||"";
+      try{await storePut("kv","public-config",config());status("연결설정을 가져왔습니다. Google 연결을 눌러 본인 계정으로 로그인해 주세요.");}
+      catch(error){status(error.message);}
+    }
     const action=(id,fn)=>{$c(id).onclick=()=>Promise.resolve().then(fn).catch(error=>{status(error.message);showCloud();});};
     action("openCloud",showCloud);action("compactCloud",showCloud);
     action("closeCloud",()=>{if(!running)return status("성경 자료를 추가하고 성경 열기를 눌러주세요.");$c("cloudDialog").close();});
@@ -350,6 +369,12 @@ window.BrowserBible = (() => {
     action("connectDrive",connect);
     action("disconnectDrive",()=>{if(token&&window.google?.accounts)google.accounts.oauth2.revoke(token,()=>{});token="";tokenExpires=0;status("연결을 해제했습니다. 기기 자료는 남아 있습니다.");});
     action("pickDriveFiles",()=>pickFiles());action("cloudRestore",()=>pickFiles(true));action("cloudBackup",()=>withBusy(backupDrive));
+    const setupLink=()=>PUBLISHED+"#setup="+encodeURIComponent(JSON.stringify(config()));
+    action("openPublished",()=>{location.assign(setupLink());});
+    action("copySetupLink",async()=>{
+      await navigator.clipboard.writeText(setupLink());
+      status("본인 기기로 전달할 연결설정 링크를 복사했습니다. 공개 게시하지 마세요. 토큰과 개인 자료는 들어 있지 않습니다.");
+    });
     action("downloadNotes",downloadNotes);action("forgetDevice",forgetDevice);
     for(const id of ["localFiles","localFolder"])$c(id).onchange=()=>importFiles($c(id).files).catch(error=>status(error.message));
     action("openReader",async()=>{
