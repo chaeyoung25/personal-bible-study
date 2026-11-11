@@ -28,14 +28,29 @@ const bundle=zip.zipSync({"__MACOSX/._phone-folder":zip.strToU8("AppleDouble met
   assert.equal(await page.locator("#cloudDialog").isVisible(),false);
   assert.equal(await page.evaluate(()=>window.phoneTestMarker),"preserve");
   assert.equal(await page.evaluate(()=>location.hash),"");
-  // Render several comparison columns with real passage rows, including aligned
-  // desktop mode; narrow screens must not inherit its shared row heights.
+  // Different text lengths and a missing verse must still share aligned rows.
   await page.evaluate(()=>{
     const first=state.versions[0], rows=state.passage.versions[first];
     state.versions=[first,"test-second","test-third"];
     state.comparisonLayout="aligned";
-    renderPassage({versions:{[first]:rows,"test-second":rows,"test-third":rows}},state.activePane);
+    renderPassage({versions:{[first]:rows,"test-second":rows.map((row,i)=>({...row,btext:row.btext.repeat(i%3+1)})),"test-third":rows.filter(row=>row.verse!==2)}},state.activePane);
   });
+  for(const [width,height] of [[360,844],[390,844],[820,1100],[1024,700],[1440,900]]) {
+    await page.setViewportSize({width,height});
+    for(const scroll of [0,500]) {
+      await page.locator('.active-pane .chapter-grid').evaluate((el,y)=>el.scrollTop=y,scroll);
+      await page.waitForTimeout(80);
+      const metrics=await page.evaluate(()=>{
+        const columns=[...document.querySelectorAll('.active-pane .version-column')];
+        return {overflow:document.documentElement.scrollWidth>innerWidth+1, rows:[0,1,2,9].map(i=>columns.map(c=>c.querySelectorAll('.verse')[i].getBoundingClientRect().top))};
+      });
+      assert.equal(metrics.overflow,false);
+      for(const tops of metrics.rows)assert(Math.max(...tops)-Math.min(...tops)<1,JSON.stringify({width,scroll,tops}));
+    }
+    if(width===820)await page.screenshot({path:'/private/tmp/bible-aligned-tablet.png'});
+  }
+  // Free layout retains the full-width mobile reading tabs.
+  await page.evaluate(()=>{state.comparisonLayout='free';renderPassage(state.passage,state.activePane);});
   for(const width of [360,390,600,768,1024,1440]) {
     await page.setViewportSize({width,height:900});
     await page.waitForTimeout(100);

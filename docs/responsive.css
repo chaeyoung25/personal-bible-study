@@ -152,7 +152,8 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
   #subtitle { display: none; }
   .toolbar { width: auto; flex-shrink: 0; justify-content: flex-end; gap: 2px; }
   .toolbar button, .toolbar select { min-height: 36px; height: 36px; }
-  #comparisonLayout, #chapterSelect, #prevChapter, #nextChapter { display: none; }
+  #chapterSelect, #prevChapter, #nextChapter { display: none; }
+  #comparisonLayout { max-width: 90px; font-size: 12px; padding-inline: 4px; }
   .pane-controls { display: grid; grid-template-columns: minmax(90px, 1fr) 64px minmax(70px, 1fr) 32px 32px; padding: 6px 10px; }
   .pane-controls select { width: 100%; min-width: 0; padding-inline: 4px; font-size: 13px; }
   .pane-controls button { width: 32px; min-width: 0; }
@@ -243,4 +244,30 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
   .hymn-header strong { font-size: 14px; }
   .hymn-header > div { gap: 3px; }
   .hymn-header button { padding-inline: 6px; font-size: 12px; }
+}
+
+/* Aligned comparisons share one row per verse at every screen size. */
+@media(max-width:1100px) {
+  .passage-pane > .chapter-grid.aligned {
+    display: grid; grid-template-columns: repeat(var(--version-count, 1), minmax(240px, 1fr));
+    grid-template-rows: repeat(var(--verse-rows), auto); grid-auto-flow: column;
+    grid-auto-columns: auto; align-content: start; align-items: stretch;
+    row-gap: 0; column-gap: 16px; overflow: auto;
+  }
+  .passage-pane > .chapter-grid.aligned > .version-column {
+    display: grid; grid-template-rows: subgrid;
+    grid-row: 1 / span var(--verse-rows); row-gap: 0; min-width: 0;
+  }
+  .passage-pane:has(> .chapter-grid.aligned) > .mobile-version-tabs { display: none; }
+}
+@media(max-width:700px) {
+  .passage-pane > .chapter-grid.aligned {
+    grid-template-columns: repeat(var(--version-count, 1), minmax(min(42vw, 240px), 1fr));
+    padding-inline: 10px; column-gap: 12px;
+  }
+  .passage-pane > .chapter-grid.aligned > .version-column + .version-column {
+    border-left: 1px solid var(--line); padding-left: 10px;
+  }
+  .passage-pane > .chapter-grid.aligned .verse { grid-template-columns: 18px minmax(0, 1fr); gap: 5px; }
+  .topbar > div:first-child { min-width: 65px; }
 }
