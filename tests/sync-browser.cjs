@@ -53,11 +53,13 @@ const assert=require("node:assert/strict");
     data.highlights["19-121-4"]={text:"표시"};
     data.underlines["19-121-4"]={text:"표시"};
     data.annotations.push({key:"19-121-4",version:"개역개정.bdb",start:0,end:2,text:"표시",type:"highlight"});
+    data.topics={topics:[{id:"1",name:"이전 주제",entries:[{title:"보호",reference:"시121:4",book:19,chapter:121,start:4,verses:[{key:"19-121-4",verse:4,text:"주제 본문"}]}]}]};
     await BrowserBible.api("/api/notes",{method:"POST",body:JSON.stringify(data)});
   });
   await sync(A.page);await sync(B.page);
   let marked=await notes(B.page);
   assert.deepEqual(marked.tags["19-121-4"],["보호"]);assert(marked.highlights["19-121-4"]);assert(marked.underlines["19-121-4"]);assert.equal(marked.annotations.length,1);
+  assert.equal(marked.topics.topics[0].name,"이전 주제");
   await A.page.evaluate(async()=>{
     const data=await BrowserBible.api("/api/notes");
     delete data.tags["19-121-4"];delete data.highlights["19-121-4"];delete data.underlines["19-121-4"];data.annotations=[];

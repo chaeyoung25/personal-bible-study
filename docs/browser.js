@@ -51,6 +51,11 @@ window.BrowserBible = (() => {
       if(element&&!element.closest("[hidden]"))buffers.push([element,element.value,element.selectionStart,element.selectionEnd]);
     }
     state.notes=notes;renderNotes();if(state.passage)renderPassage(state.passage);refreshPassagePanes();
+    if(notes.topics&&JSON.stringify(state.topics)!==JSON.stringify(notes.topics)){
+      const selected=$c("topicSelect").value;state.topics=structuredClone(notes.topics);
+      fillSelect($c("topicSelect"),[{id:"",name:"전체 주제"},...state.topics.topics.map(topic=>({id:String(topic.id),name:topic.name+" · "+topic.entries.length+"선"}))],selected);
+      renderTopics();
+    }
     for(const [element,value,start,end] of buffers){element.value=value;if(element.setSelectionRange&&start!==null)element.setSelectionRange(start,end);}
   }
   function reportSync(text,conflicts,pendingCount){
@@ -89,7 +94,15 @@ window.BrowserBible = (() => {
       const req = db.transaction("meta").objectStore("meta").getAll();
       req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
     });
-    $c("localInventory").textContent = catalog.map(file => file.id + " · " + (file.size/1048576).toFixed(1) + " MB").join("\n") || "저장된 자료가 없습니다.";
+    $c("localInventory").textContent = catalog.filter(file=>file.kind!=="archive").map(file => file.id + " · " + (file.size/1048576).toFixed(1) + " MB").join("\n") || "저장된 자료가 없습니다.";
+    const archiveTarget=$c("archiveInventory");archiveTarget.replaceChildren();
+    for(const file of catalog.filter(file=>file.kind==="archive")){
+      const button=document.createElement("button");button.textContent=file.name+" 다운로드";
+      button.onclick=async()=>{
+        const bytes=await storeGet("files",file.id);const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+        const link=document.createElement("a");link.href=url;link.download=file.name.split("/").pop();link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      };archiveTarget.append(button);
+    }
     return catalog;
   }
   function callWorker(action,params={},buffer) {
@@ -143,6 +156,7 @@ window.BrowserBible = (() => {
       return {...mark,version:mark.version.normalize("NFC")};
     });
     result.bookmarks = Array.isArray(payload.bookmarks) ? payload.bookmarks : [];
+    if(payload.topics)result.topics=BibleMigration.validateTopics(payload.topics);
     return result;
   }
   async function withBusy(task) {
@@ -165,7 +179,7 @@ window.BrowserBible = (() => {
       if (new TextDecoder().decode(buffer.slice(0,16)) !== "SQLite format 3\0") throw Error("SQLite 자료가 아닙니다: " + id);
       kind = ext==="bdb" ? "translation" : ext==="hdb" ? "hymns" : "commentary";
       await callWorker("validate",{kind},buffer.slice(0));
-    } else if (["jpg","jpeg","png"].includes(ext) && /^new_\d+\.(?:jpe?g|png)$/i.test(id)) {
+    } else if (["jpg","jpeg","png"].includes(ext) && /^(?:new|old)_\d+\.(?:jpe?g|png)$/i.test(id)) {
       const bytes = new Uint8Array(buffer);
       if (buffer.byteLength>10*1048576 || !(bytes[0]===255&&bytes[1]===216 || bytes[0]===137&&bytes[1]===80&&bytes[2]===78&&bytes[3]===71)) throw Error("잘못된 악보 이미지");
       kind = "image";
@@ -190,6 +204,46 @@ window.BrowserBible = (() => {
       status(count + "개 파일 처리가 완료됐습니다. 성경 열기를 눌러주세요.");
     });
   }
+  async function importMigration(stream){
+    return BibleMigration.importArchive(stream,{
+      safe:assertSafeObject,
+      async prepare(bytes,counts){
+        const estimate=await navigator.storage?.estimate?.();
+        if(estimate&&estimate.quota-estimate.usage<bytes*1.15)throw Error("이 브라우저의 저장공간이 부족합니다. 기기의 여유 공간을 확보한 뒤 다시 시도해 주세요.");
+        if(!confirm("로컬 전체 자료를 이전할까요? 메모 "+(counts?.notes||0)+"개, 형광펜 "+(counts?.highlights||0)+"개, 주제 "+(counts?.topics||0)+"개와 성경·악보를 가져옵니다. 현재 웹 메모와 합치며 원본은 삭제하지 않습니다."))throw Error("전체 이전을 취소했습니다.");
+        await navigator.storage?.persist?.();
+      },
+      async importFile(name,bytes,hash){
+        const existing=await storeGet("meta",name);
+        if(existing?.sha256===hash)return;
+        await importOne(name,bytes);
+        const metadata=await storeGet("meta",name);metadata.sha256=hash;await storePut("meta",name,metadata);
+      },
+      async archiveFile(name,bytes){
+        const id="migration-archive/"+name;
+        const tx=db.transaction(["files","meta"],"readwrite");
+        tx.objectStore("files").put(bytes,id);
+        tx.objectStore("meta").put({id,name,kind:"archive",size:bytes.byteLength},id);
+        await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});
+      },
+      progress(done,total,name){$c("migrationStatus").textContent=done+" / "+total+" 파일 확인 · "+name;},
+      async commitPersonal(rawNotes,rawTopics,manifest){
+        const incoming=validateNotes(rawNotes),topics=BibleMigration.validateTopics(rawTopics);
+        const current=await storeGet("kv","notes")||emptyNotes();
+        await storePut("kv","rescue-migration-"+Date.now(),current);
+        const merged=BibleMigration.mergeNotes(current,incoming);
+        merged.topics=BibleMigration.mergeTopics(current.topics,topics);
+        await notesSync.save(validateNotes(merged),false,current);
+        await storePut("kv","last-migration",{createdAt:manifest.createdAt,counts:manifest.counts,completedAt:new Date().toISOString()});
+        await inventory();
+        if(running){state.library=await api("/api/library");renderVersionSelectors();paintSyncedNotes(await storeGet("kv","notes"));}
+        else if(catalog.some(file=>file.kind==="translation")){await readerInit();running=true;}
+        $c("migrationStatus").textContent="전체 이전 완료 · "+manifest.files.length+"개 파일의 무결성 확인. Google 연결 후 자동 동기화됩니다.";
+        status("로컬 자료 이전이 완료됐습니다. 기존 원본과 이전 전 웹 메모는 보존했습니다.");
+        notesSync.connected();
+      },
+    });
+  }
   async function restoreNotes(notes) {
     await notesSync.save(notes,true);
     if (running) { state.notes=notes; renderNotes(); if(state.passage)renderPassage(state.passage); refreshPassagePanes(); }
@@ -200,12 +254,13 @@ window.BrowserBible = (() => {
     const q = url.searchParams, route = url.pathname;
     if (route==="/api/library") return {books,translations:catalog.filter(f=>f.kind==="translation"),commentaries:catalog.filter(f=>f.kind==="commentary")};
     if (route==="/topics.json") {
-      const data = await fetch(new URL("topics.json",BASE)).then(r=>r.json());
+      const saved=await storeGet("kv","notes");
+      const data = saved?.topics?structuredClone(saved.topics):await fetch(new URL("topics.json",BASE)).then(r=>r.json());
       const version = catalog.find(f=>f.kind==="translation")?.id;
       if (version) {
         const rows = await callWorker("topicTexts",{version});
         const texts = new Map(rows.map(r=>[[r.book,r.chapter,r.verse].join("-"),r.btext]));
-        for (const topic of data.topics) for(const entry of topic.entries) for(const verse of entry.verses) verse.text=texts.get(verse.key)||"";
+        for (const topic of data.topics) for(const entry of topic.entries) for(const verse of entry.verses) verse.text=verse.text||texts.get(verse.key)||"";
       }
       return data;
     }
@@ -350,8 +405,10 @@ window.BrowserBible = (() => {
           await withBusy(async()=>{
             for(const file of data.docs){
               const metadata=await driveFetch("drive/v3/files/"+encodeURIComponent(file.id)+"?fields=id,name,size,mimeType").then(r=>r.json());
-              if(Number(metadata.size)>128*1048576)throw Error("128MB 이하의 개별 파일을 선택해 주세요.");
+              const migration=/\.zip$/i.test(metadata.name);
+              if(Number(metadata.size)>(migration?2*1073741824:128*1048576))throw Error("자료 파일이 너무 큽니다.");
               if(restore&&!/\.json$/i.test(metadata.name))throw Error("메모 백업 JSON을 선택해 주세요.");
+              if(migration){await importMigration((await driveFetch("drive/v3/files/"+encodeURIComponent(file.id)+"?alt=media")).body);continue;}
               if(!/\.(bdb|sdb|cdb|hdb|json|jpe?g|png)$/i.test(metadata.name))continue;
               status("Drive 다운로드: "+metadata.name);
               const buffer=await driveFetch("drive/v3/files/"+encodeURIComponent(file.id)+"?alt=media").then(r=>r.arrayBuffer());
@@ -452,6 +509,11 @@ window.BrowserBible = (() => {
     });
     action("downloadNotes",downloadNotes);action("forgetDevice",forgetDevice);
     for(const id of ["localFiles","localFolder"])$c(id).onchange=()=>importFiles($c(id).files).catch(error=>status(error.message));
+    $c("migrationFile").onchange=()=>{
+      const file=$c("migrationFile").files[0];if(!file)return;
+      if(file.size>2*1073741824){status("전체 이전 파일이 2GB를 넘습니다.");return;}
+      withBusy(()=>importMigration(file.stream())).catch(error=>{$c("migrationStatus").textContent="이전 미완료 · "+error.message;status(error.message);});
+    };
     action("openReader",async()=>{
       if(!catalog.some(f=>f.kind==="translation"))throw Error("성경 역본 .bdb 파일을 하나 이상 선택해 주세요.");
       if(running){location.reload();return;}

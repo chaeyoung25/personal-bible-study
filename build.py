@@ -10,7 +10,7 @@ APP = ROOT.parent
 OUT = ROOT / "docs"
 OUT.mkdir(exist_ok=True)
 (OUT / "vendor").mkdir(exist_ok=True)
-for name in ("sql-wasm.js", "sql-wasm.wasm", "LICENSE"):
+for name in ("sql-wasm.js", "sql-wasm.wasm", "LICENSE", "fflate.min.js", "fflate.LICENSE"):
     source = Path("/private/tmp/bible-sql-vendor") / name
     if source.exists():
         shutil.copyfile(source, OUT / "vendor" / name)
@@ -28,7 +28,7 @@ for name in assets:
 html = (APP / "static" / "index.html").read_text()
 html = html.replace('href="/', 'href="./').replace('src="/', 'src="./')
 html = html.replace('<title>', '<meta name="referrer" content="no-referrer">\n  <meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\' \'wasm-unsafe-eval\' https://accounts.google.com https://apis.google.com; style-src \'self\' \'unsafe-inline\' https://accounts.google.com; connect-src \'self\' https://www.googleapis.com https://accounts.google.com https://content.googleapis.com; img-src \'self\' blob: data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://docs.google.com https://drive.google.com; worker-src \'self\'; object-src \'none\'; base-uri \'self\'; form-action \'none\'">\n  <link rel="stylesheet" href="./cloud.css">\n  <link rel="manifest" href="./manifest.webmanifest">\n  <title>', 1)
-html = html.replace('<script src="./topics.js">', '<script src="./sync-engine.js"></script>\n  <script src="./drive-sync.js"></script>\n  <script src="./browser.js"></script>\n  <script src="./topics.js">', 1)
+html = html.replace('<script src="./topics.js">', '<script src="./vendor/fflate.min.js"></script>\n  <script src="./migration.js"></script>\n  <script src="./sync-engine.js"></script>\n  <script src="./drive-sync.js"></script>\n  <script src="./browser.js"></script>\n  <script src="./topics.js">', 1)
 html = html.replace('<button id="openHymns">', '<button id="openCloud">Drive · 자료 관리</button><button id="openHymns">', 1)
 html = html.replace('<button id="openCloud">Drive · 자료 관리</button>', '<button id="openCloud">Drive · 자료 관리</button><button id="openSyncStatus" class="sync-summary" aria-label="동기화 상태 보기">Google 연결 필요</button>', 1)
 html = html.replace('<strong>Personal Bible Study</strong><div>', '<strong>Personal Bible Study</strong><div><button id="compactCloud">Drive</button>', 1)

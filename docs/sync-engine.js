@@ -16,6 +16,7 @@
     }
     for(const key of Object.keys(result))if(key.startsWith('["annotations"'))result[key].sort((a,b)=>a.start-b.start||a.end-b.end||a.text.localeCompare(b.text));
     if(notes.bookmarks?.length)result['["bookmarks"]']=notes.bookmarks;
+    if(notes.topics)result['["topics"]']=notes.topics;
     return result;
   }
   function validateOperation(op){
@@ -25,6 +26,7 @@
     const key=JSON.parse(op.key);
     if(!Array.isArray(key))throw Error("동기화 항목 오류");
     if(key[0]==="bookmarks"&&key.length===1){if(op.value!==null&&!Array.isArray(op.value))throw Error("북마크 오류");}
+    else if(key[0]==="topics"&&key.length===1){if(op.value!==null&&(!op.value||!Array.isArray(op.value.topics)))throw Error("주제 자료 오류");}
     else if(collections.includes(key[0])&&key.length===2&&refPattern.test(key[1])){
       if(op.value!==null){
         if(key[0]==="notes"&&typeof op.value!=="string")throw Error("메모 오류");
@@ -68,6 +70,7 @@
       if(value===null)continue;
       if(key[0]==="annotations")notes.annotations.push(...clone(value));
       else if(key[0]==="bookmarks")notes.bookmarks=clone(value);
+      else if(key[0]==="topics")notes.topics=clone(value);
       else notes[key[0]][key[1]]=clone(value);
     }
     return {notes,conflicts};

@@ -1,0 +1,10 @@
+const assert=require("node:assert/strict");
+const M=require("../source/migration");
+const old={notes:{"1-1-1":"web"},tags:{"1-1-1":["A"]},highlights:{},underlines:{},annotations:[],updated:{},bookmarks:[]};
+const incoming={notes:{"1-1-1":"local","1-1-2":"other"},tags:{"1-1-1":["B"]},highlights:{"1-1-1":{text:"mark",topicMark:true}},underlines:{},annotations:[],updated:{},bookmarks:[]};
+const merged=M.mergeNotes(old,incoming);
+assert(merged.notes["1-1-1"].includes("web")&&merged.notes["1-1-1"].includes("local"));
+assert.deepEqual(merged.tags["1-1-1"],["A","B"]);assert(merged.highlights["1-1-1"].topicMark);
+assert.equal(old.notes["1-1-1"],"web");
+assert.throws(()=>M.validateTopics({topics:[{id:"1",name:"bad",entries:[{}]}]}));
+console.log("PASS: migration preserves web/local conflicting memo, tags and marks without changing originals; invalid topics rejected");

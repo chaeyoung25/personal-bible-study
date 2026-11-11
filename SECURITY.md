@@ -2,6 +2,12 @@
 
 - Public source contains no Bible databases, scores, notes, tokens, passwords,
   screenshots, backups or account-specific settings.
+- Full migration ZIPs remain outside this repository in the private parent
+  migration_exports folder. Imports stream one bounded file at a time, validate
+  SQLite/image signatures and per-file SHA-256, and reject unsafe paths,
+  duplicate names, unsupported manifests and oversized payloads. Existing web
+  notes are merged only after all files pass checks. Original local files stay
+  intact; a rescue of current web notes is saved before merging.
 - Public code is not a private login wall. Google authorizes private data access.
 - Optional setup handoff uses a URL fragment containing only public OAuth client
   ID, restricted browser Picker API key and project number. It is stripped before
