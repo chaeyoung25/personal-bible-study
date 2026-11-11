@@ -95,6 +95,8 @@ window.BrowserBible = (() => {
       req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
     });
     $c("localInventory").textContent = catalog.filter(file=>file.kind!=="archive").map(file => file.id + " · " + (file.size/1048576).toFixed(1) + " MB").join("\n") || "저장된 자료가 없습니다.";
+    $c("openBulkReader").disabled=!catalog.some(file=>file.kind==="translation");
+    if(location.origin===new URL(PUBLISHED).origin)$c("openPublished").textContent="성경 본문 보기";
     const archiveTarget=$c("archiveInventory");archiveTarget.replaceChildren();
     for(const file of catalog.filter(file=>file.kind==="archive")){
       const button=document.createElement("button");button.textContent=file.name+" 다운로드";
@@ -216,7 +218,8 @@ window.BrowserBible = (() => {
       async prepare(bytes,counts){
         const estimate=await navigator.storage?.estimate?.();
         if(estimate&&estimate.quota-estimate.usage<bytes*1.15)throw Error("이 브라우저의 저장공간이 부족합니다. 기기의 여유 공간을 확보한 뒤 다시 시도해 주세요.");
-        if(!confirm("로컬 전체 자료를 이전할까요? 메모 "+(counts?.notes||0)+"개, 형광펜 "+(counts?.highlights||0)+"개, 주제 "+(counts?.topics||0)+"개와 성경·악보를 가져옵니다. 현재 웹 메모와 합치며 원본은 삭제하지 않습니다."))throw Error("전체 이전을 취소했습니다.");
+        const question=counts?"로컬 전체 자료를 이전할까요? 메모 "+(counts.notes||0)+"개, 형광펜 "+(counts.highlights||0)+"개, 주제 "+(counts.topics||0)+"개와 성경·악보를 가져옵니다.":"ZIP 안의 성경·악보 자료를 한 번에 가져올까요?";
+        if(!confirm(question+" 현재 웹 메모와 합치며 원본은 삭제하지 않습니다."))throw Error("자료 가져오기를 취소했습니다.");
         await navigator.storage?.persist?.();
       },
       async importFile(name,bytes,hash){
@@ -232,7 +235,21 @@ window.BrowserBible = (() => {
         tx.objectStore("meta").put({id,name,kind:"archive",size:bytes.byteLength},id);
         await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});
       },
-      progress(done,total,name){$c("migrationStatus").textContent=done+" / "+total+" 파일 확인 · "+name;},
+      progress(done,total,name){$c("migrationStatus").textContent=done+(total?" / "+total:"개")+" 파일 확인 · "+name;},
+      async commitGeneric(personal,count){
+        if(personal["personal/notes.json"]||personal["personal/topics.json"]){
+          const current=await storeGet("kv","notes")||emptyNotes();
+          await storePut("kv","rescue-migration-"+Date.now(),current);
+          const merged=personal["personal/notes.json"]?BibleMigration.mergeNotes(current,validateNotes(personal["personal/notes.json"])):structuredClone(current);
+          if(personal["personal/topics.json"])merged.topics=BibleMigration.mergeTopics(current.topics,BibleMigration.validateTopics(personal["personal/topics.json"]));
+          await notesSync.save(validateNotes(merged),false,current);
+        }
+        await inventory();
+        if(running){state.library=await api("/api/library");renderVersionSelectors();paintSyncedNotes(await storeGet("kv","notes"));}
+        else if(catalog.some(file=>file.kind==="translation")){await readerInit();running=true;}
+        $c("migrationStatus").textContent="자료 가져오기 완료 · "+count+"개 파일. "+(catalog.some(file=>file.kind==="translation")?"‘성경 본문 열기’를 눌러주세요.":"성경 본문을 보려면 역본 .bdb 파일도 추가해 주세요.");
+        status("ZIP 자료를 가져왔습니다.");notesSync.connected();
+      },
       async commitPersonal(rawNotes,rawTopics,manifest){
         const incoming=validateNotes(rawNotes),topics=BibleMigration.validateTopics(rawTopics);
         const current=await storeGet("kv","notes")||emptyNotes();
@@ -510,7 +527,7 @@ window.BrowserBible = (() => {
     action("disconnectDrive",()=>{if(token&&window.google?.accounts)google.accounts.oauth2.revoke(token,()=>{});sessionController.abort();sessionController=new AbortController();authGeneration++;token="";tokenExpires=0;verifiedSession=false;notesSync?.disconnected();status("연결을 해제했습니다. 기기 자료는 남아 있습니다.");});
     action("pickDriveFiles",()=>pickFiles());action("pickDriveBundle",()=>pickFiles(false,true));action("cloudRestore",()=>pickFiles(true));action("cloudBackup",()=>withBusy(backupDrive));
     const setupLink=()=>PUBLISHED+"#setup="+encodeURIComponent(JSON.stringify(config()));
-    action("openPublished",()=>{location.assign(setupLink());});
+    action("openPublished",()=>{if(location.origin===new URL(PUBLISHED).origin)$c("openReader").click();else location.assign(setupLink());});
     action("copySetupLink",async()=>{
       await navigator.clipboard.writeText(setupLink());
       status("본인 기기로 전달할 연결설정 링크를 복사했습니다. 공개 게시하지 마세요. 토큰과 개인 자료는 들어 있지 않습니다.");
@@ -518,15 +535,18 @@ window.BrowserBible = (() => {
     action("downloadNotes",downloadNotes);action("forgetDevice",forgetDevice);
     for(const id of ["localFiles","localFolder"])$c(id).onchange=()=>importFiles($c(id).files).catch(error=>status(error.message));
     $c("migrationFile").onchange=()=>{
-      const file=$c("migrationFile").files[0];if(!file)return;
-      if(file.size>2*1073741824){status("전체 이전 파일이 2GB를 넘습니다.");return;}
-      withBusy(()=>importMigration(file.stream())).catch(error=>{$c("migrationStatus").textContent="이전 미완료 · "+error.message;status(error.message);});
+      const files=[...$c("migrationFile").files].filter(file=>/[.]zip$/i.test(file.name)||file.type==="application/zip");
+      if(!files.length){$c("migrationStatus").textContent="ZIP 파일이 선택되지 않았습니다. .report.json이나 폴더 안의 개별 파일 대신 ZIP을 선택해 주세요.";return;}
+      withBusy(async()=>{for(const file of files){if(file.size>2*1073741824)throw Error("자료 ZIP이 2GB를 넘습니다.");await importMigration(file.stream());}})
+        .catch(error=>{$c("migrationStatus").textContent="가져오기 미완료 · "+error.message;status(error.message);});
+      $c("migrationFile").value="";
     };
     action("openReader",async()=>{
       if(!catalog.some(f=>f.kind==="translation"))throw Error("성경 역본 .bdb 파일을 하나 이상 선택해 주세요.");
-      if(running){location.reload();return;}
+      if(running){$c("cloudDialog").close();return;}
       await readerInit();running=true;$c("cloudDialog").close();
     });
+    action("openBulkReader",()=>$c("openReader").click());
     $c("cloudDialog").addEventListener("cancel",event=>{if(!running)event.preventDefault();});
     if("serviceWorker" in navigator) {
       let updateRequested=false;

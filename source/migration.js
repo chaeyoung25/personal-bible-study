@@ -46,24 +46,31 @@
   async function importArchive(stream,io){
     const lib=root.fflate;
     if(!lib)throw Error("이전 파일 읽기 기능을 불러오지 못했습니다. 새로고침해 주세요.");
-    let manifest=null,failure=null,chain=Promise.resolve(),personal={},total=0;
+    let manifest=null,generic=false,failure=null,chain=Promise.resolve(),personal={},total=0;
     const expected=new Map(),completed=new Set(),names=new Set();
     const decoder=new TextDecoder();
     const unzip=new lib.Unzip(file=>{
       try{
         const name=file.name.normalize("NFC");
-        if(name!==file.name||name.includes("\\")||name.startsWith("/")||name.split("/").some(p=>p===".."||p==="."))throw Error("안전하지 않은 이전 경로");
+        if(name.includes("\\")||name.startsWith("/")||name.split("/").some(p=>p===".."||p==="."))throw Error("안전하지 않은 이전 경로");
+        if(name.endsWith("/"))return;
         if(names.has(name))throw Error("중복 파일 경로");
         names.add(name);
-        if(!manifest&&name!=="migration-manifest.json")throw Error("성경 앱 전체 이전 파일을 선택해 주세요.");
+        if(!manifest&&!generic&&name!=="migration-manifest.json"){generic=true;chain=chain.then(()=>io.prepare(0,null)).catch(error=>{failure=error;});}
+        const base=name.split("/").pop();
+        if(generic){
+          if(/[.]zip$/i.test(base))throw Error("ZIP 안에 또 ZIP이 들어 있습니다. 바깥 압축만 풀고 안의 '성경앱-전체이전…zip' 파일 하나를 선택해 주세요.");
+          if(!/[.](bdb|sdb|cdb|hdb)$/i.test(base)&&!new RegExp("^(new|old)_[0-9]+[.](jpg|jpeg|png)$","i").test(base)&&!["notes.json","topics.json"].includes(base))return;
+        }
         const entry=expected.get(name);
-        if(name!=="migration-manifest.json"&&!entry)throw Error("목록에 없는 이전 파일");
-        const limit=name==="migration-manifest.json"?2*1048576:entry.size;
+        if(!generic&&name!=="migration-manifest.json"&&!entry)throw Error("목록에 없는 이전 파일");
+        const limit=name==="migration-manifest.json"?2*1048576:generic?Math.min(file.originalSize??128*1048576,128*1048576):entry.size;
         if(limit>128*1048576||(file.originalSize!==undefined&&file.originalSize>limit))throw Error("이전 파일 크기 오류");
         const chunks=[];let length=0;
         file.ondata=(error,chunk,final)=>{
           if(error){failure=error;return;}
           length+=chunk.length;
+          if(generic){total+=chunk.length;if(total>2*1073741824){failure=Error("자료 ZIP의 압축 해제 용량이 2GB를 넘습니다.");file.terminate();return;}}
           if(length>limit){failure=Error("허용 크기를 넘는 이전 파일");file.terminate();return;}
           chunks.push(chunk);
           if(final&&name==="migration-manifest.json"){
@@ -85,7 +92,12 @@
             if(failure)throw failure;
             const bytes=new Uint8Array(length);let offset=0;
             for(const part of chunks){bytes.set(part,offset);offset+=part.length;}
-            if(name==="migration-manifest.json"){
+            if(generic){
+              const hash=[...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(b=>b.toString(16).padStart(2,"0")).join("");
+              if(base==="notes.json"||base==="topics.json"){const value=JSON.parse(decoder.decode(bytes));io.safe(value);personal["personal/"+base]=value;}
+              else await io.importFile(base,bytes.buffer,hash);
+              completed.add(name);io.progress(completed.size,0,name);
+            }else if(name==="migration-manifest.json"){
               manifest=JSON.parse(decoder.decode(bytes));io.safe(manifest);
               if(manifest.format!=="personal-bible-migration"||manifest.schema!==1||!Array.isArray(manifest.files)||manifest.files.length>10000)throw Error("지원하지 않는 이전 파일");
               for(const record of manifest.files){
@@ -122,6 +134,10 @@
       }
       unzip.push(new Uint8Array(0),true);await chain;
       if(failure)throw failure;
+      if(generic){
+        if(!completed.size)throw Error("ZIP 안에 성경 DB나 new_번호.jpg 악보가 없습니다. 전체 이전 ZIP 또는 자료 폴더 ZIP을 선택해 주세요.");
+        await io.commitGeneric(personal,completed.size);return {generic:true,files:completed.size};
+      }
       if(!manifest||completed.size!==expected.size||!personal["personal/notes.json"]||!personal["personal/topics.json"])throw Error("이전 파일이 누락되거나 다운로드가 중단됐습니다.");
       await io.commitPersonal(personal["personal/notes.json"],personal["personal/topics.json"],manifest);
       return manifest;
