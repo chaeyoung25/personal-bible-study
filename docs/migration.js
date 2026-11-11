@@ -5,7 +5,7 @@
     for(const field of ["notes","tags","highlights","underlines","updated"])result[field]||={};
     for(const [key,text] of Object.entries(incoming.notes||{})){
       const old=result.notes[key];
-      result.notes[key]=old&&old!==text ? old+"\n\n[로컬에서 가져온 메모]\n"+text : text;
+      result.notes[key]=old&&old!==text&&!old.includes(text) ? old+"\n\n[로컬에서 가져온 메모]\n"+text : old||text;
     }
     for(const [key,tags] of Object.entries(incoming.tags||{}))result.tags[key]=[...new Set([...(result.tags[key]||[]),...tags])];
     for(const field of ["highlights","underlines"])for(const [key,value] of Object.entries(incoming[field]||{})){

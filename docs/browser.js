@@ -195,6 +195,10 @@ window.BrowserBible = (() => {
     return withBusy(async()=>{
       let count=0;
       for (const file of files) {
+        if(/\.zip$/i.test(file.name)){
+          if(file.size>2*1073741824)throw Error("전체 자료 ZIP이 2GB를 넘습니다.");
+          await importMigration(file.stream());count++;continue;
+        }
         if (!/\.(?:bdb|sdb|cdb|hdb|json|jpe?g|png)$/i.test(file.name)) continue;
         if (file.webkitRelativePath && /\.json$/i.test(file.name) && file.name!=="notes.json") continue;
         status("불러오는 중: " + file.name);
@@ -205,6 +209,8 @@ window.BrowserBible = (() => {
     });
   }
   async function importMigration(stream){
+    $c("cloudDialog").scrollTop=0;
+    $c("migrationStatus").textContent="전체 자료 ZIP을 읽고 있습니다.";
     return BibleMigration.importArchive(stream,{
       safe:assertSafeObject,
       async prepare(bytes,counts){
@@ -390,14 +396,15 @@ window.BrowserBible = (() => {
     status("Drive에 새 백업을 저장했습니다: "+name);
     return {ok:true,file:name};
   }
-  async function pickFiles(restore=false){
+  async function pickFiles(restore=false,bundleOnly=false){
     const settings=config();needToken();await ensureGoogle();
     if(!restore&&running&& !confirm("자료를 추가한 뒤 성경을 다시 열면 읽기 화면이 새로고침됩니다. 계속할까요?"))return;
     $c("cloudDialog").close();
     await new Promise((resolve,reject)=>{
       const view=new google.picker.DocsView(google.picker.ViewId.DOCS).setIncludeFolders(true);
+      if(bundleOnly){view.setIncludeFolders(false);view.setMimeTypes("application/zip,application/x-zip-compressed");view.setQuery("성경앱-전체이전");}
       const builder=new google.picker.PickerBuilder().addView(view).setOAuthToken(needToken()).setDeveloperKey(settings.pickerKey).setAppId(settings.project).setOrigin(location.origin);
-      if(!restore)builder.enableFeature(google.picker.Feature.MULTISELECT_ENABLED);
+      if(!restore&&!bundleOnly)builder.enableFeature(google.picker.Feature.MULTISELECT_ENABLED);
       const picker=builder.setCallback(async data=>{
         if(data.action===google.picker.Action.CANCEL){resolve();return;}
         if(data.action!==google.picker.Action.PICKED)return;
@@ -406,6 +413,7 @@ window.BrowserBible = (() => {
             for(const file of data.docs){
               const metadata=await driveFetch("drive/v3/files/"+encodeURIComponent(file.id)+"?fields=id,name,size,mimeType").then(r=>r.json());
               const migration=/\.zip$/i.test(metadata.name);
+              if(bundleOnly&&!migration)throw Error("전체 자료 ZIP 하나를 선택해 주세요.");
               if(Number(metadata.size)>(migration?2*1073741824:128*1048576))throw Error("자료 파일이 너무 큽니다.");
               if(restore&&!/\.json$/i.test(metadata.name))throw Error("메모 백업 JSON을 선택해 주세요.");
               if(migration){await importMigration((await driveFetch("drive/v3/files/"+encodeURIComponent(file.id)+"?alt=media")).body);continue;}
@@ -421,7 +429,7 @@ window.BrowserBible = (() => {
       picker.setVisible(true);
     }).finally(()=>showCloud());
   }
-  function showCloud(){ if(!$c("cloudDialog").open)$c("cloudDialog").showModal(); }
+  function showCloud(){ if(!$c("cloudDialog").open)$c("cloudDialog").showModal();$c("cloudDialog").scrollTop=0; }
   function downloadNotes(){
     storeGet("kv","notes").then(data=>{
       const url=URL.createObjectURL(new Blob([JSON.stringify(snapshot(data||emptyNotes()),null,2)],{type:"application/json"}));
@@ -500,7 +508,7 @@ window.BrowserBible = (() => {
     action("saveCloudConfig",async()=>{await storePut("kv","public-config",config());status("공개 클라이언트 설정을 이 기기에 저장했습니다.");});
     action("connectDrive",connect);
     action("disconnectDrive",()=>{if(token&&window.google?.accounts)google.accounts.oauth2.revoke(token,()=>{});sessionController.abort();sessionController=new AbortController();authGeneration++;token="";tokenExpires=0;verifiedSession=false;notesSync?.disconnected();status("연결을 해제했습니다. 기기 자료는 남아 있습니다.");});
-    action("pickDriveFiles",()=>pickFiles());action("cloudRestore",()=>pickFiles(true));action("cloudBackup",()=>withBusy(backupDrive));
+    action("pickDriveFiles",()=>pickFiles());action("pickDriveBundle",()=>pickFiles(false,true));action("cloudRestore",()=>pickFiles(true));action("cloudBackup",()=>withBusy(backupDrive));
     const setupLink=()=>PUBLISHED+"#setup="+encodeURIComponent(JSON.stringify(config()));
     action("openPublished",()=>{location.assign(setupLink());});
     action("copySetupLink",async()=>{

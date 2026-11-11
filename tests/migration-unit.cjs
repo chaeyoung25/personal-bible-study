@@ -6,5 +6,6 @@ const merged=M.mergeNotes(old,incoming);
 assert(merged.notes["1-1-1"].includes("web")&&merged.notes["1-1-1"].includes("local"));
 assert.deepEqual(merged.tags["1-1-1"],["A","B"]);assert(merged.highlights["1-1-1"].topicMark);
 assert.equal(old.notes["1-1-1"],"web");
+assert.equal(M.mergeNotes(merged,incoming).notes["1-1-1"],merged.notes["1-1-1"],"reimport must not duplicate imported note");
 assert.throws(()=>M.validateTopics({topics:[{id:"1",name:"bad",entries:[{}]}]}));
 console.log("PASS: migration preserves web/local conflicting memo, tags and marks without changing originals; invalid topics rejected");

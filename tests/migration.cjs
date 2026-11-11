@@ -7,7 +7,7 @@ const original=JSON.parse(fs.readFileSync(path.join(root,"user_data/notes.json")
 (async()=>{
  const browser=await chromium.launch({channel:"chrome",headless:true});
  try{
-  const page=await browser.newPage({viewport:{width:1440,height:1000}});
+  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   page.setDefaultTimeout(120000);const errors=[];
   page.on("pageerror",error=>errors.push(error.message));page.on("dialog",dialog=>dialog.accept());
   await page.goto("http://127.0.0.1:8806");
@@ -17,7 +17,7 @@ const original=JSON.parse(fs.readFileSync(path.join(root,"user_data/notes.json")
     notes.notes["43-3-16"]="Existing web note: preserve";notes.tags["43-3-16"]=["web"];
     await BrowserBible.api("/api/notes",{method:"POST",body:JSON.stringify(notes)});
   });
-  await page.locator("#migrationFile").setInputFiles(path.join(exportsDir,archive));
+  await page.locator("#"+(process.env.BIBLE_BULK_INPUT||"migrationFile")).setInputFiles(path.join(exportsDir,archive));
   await page.waitForFunction(()=>/전체 이전 완료|이전 미완료/.test(document.querySelector("#migrationStatus").textContent),{timeout:600000});
   const message=await page.locator("#migrationStatus").textContent();
   assert(message.includes("전체 이전 완료"),message);
@@ -38,7 +38,7 @@ const original=JSON.parse(fs.readFileSync(path.join(root,"user_data/notes.json")
   assert(hymns.results.some(h=>h.number===50&&h.images.includes("new_50.jpg")));
   assert.equal(await page.evaluate(()=>document.querySelector("#topicSelect").options.length),21);
   await page.screenshot({path:"/private/tmp/bible-full-migration.png"});
-  await page.reload();await page.waitForSelector(".original-word");
+  await page.reload();await page.waitForSelector(".original-word",{state:"attached"});
   assert((await page.evaluate(()=>BrowserBible.api("/api/notes"))).notes["43-3-16"].includes("Existing web note"));
   assert.deepEqual(errors,[]);
   console.log("PASS: full private archive imported and verified; original notes/marks/tags/topics retained; existing web memo retained; 90 versions, 5 research DBs, hymn scores, historical/other data, reload persistence; original source untouched.");

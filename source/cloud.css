@@ -10,6 +10,9 @@
 .cloud-body button { margin: 4px 6px 4px 0; padding: 8px 12px; }
 .cloud-file { border: 1px solid var(--line); padding: 8px; border-radius: 6px; }
 .cloud-file input { border: 0; padding: 6px 0; }
+.bulk-import > button { width: 100%; text-align: center; background: var(--accent-soft); border-color: var(--accent); }
+.bulk-import .cloud-file { padding: 12px; }
+@media (pointer: coarse) { .cloud-folder { display: none !important; } }
 #cloudStatus { overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }
 .sync-toggle { display: flex !important; align-items: center; gap: 8px; }
 .sync-toggle input { width: 18px; height: 18px; }
