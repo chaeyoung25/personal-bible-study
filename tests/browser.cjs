@@ -96,6 +96,14 @@ const find=name=>path.join(fixtures,fs.readdirSync(fixtures).find(file=>file.nor
   assert.equal(await transfer.evaluate(()=>location.hash),"");
   assert(!transfer.url().includes("AIza"));
   await transfer.close();
+  const bridge=await context.newPage();
+  await bridge.route("https://chaeyoung25.github.io/personal-bible-study/**",route=>route.fulfill({contentType:"text/html",body:"<!doctype html><title>Bridge test</title>"}));
+  await bridge.goto("http://localhost:8806/connect.html");
+  await bridge.waitForURL("https://chaeyoung25.github.io/personal-bible-study/**");
+  const sent=JSON.parse(decodeURIComponent(new URL(bridge.url()).hash.slice(7)));
+  assert.deepEqual(sent,setup);
+  assert.deepEqual(Object.keys(sent).sort(),["clientId","pickerKey","project"]);
+  await bridge.close();
   account="account-two";
   await page.locator("#disconnectDrive").click();await page.locator("#connectDrive").click();
   await page.waitForFunction(()=>document.querySelector("#cloudStatus").textContent.includes("다른 Google 계정"));

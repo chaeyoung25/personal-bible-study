@@ -1,0 +1,5 @@
+body { display: block; padding: 24px; }
+main { max-width: 560px; margin: 48px auto; }
+h1 { font-size: 22px; }
+p { line-height: 1.7; }
+a { color: var(--accent); }

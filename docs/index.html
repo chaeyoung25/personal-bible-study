@@ -16,9 +16,9 @@
   <header><h2 id="cloudTitle">개인 자료 · Google Drive</h2><button id="closeCloud" aria-label="자료 관리 닫기">×</button></header>
   <div class="cloud-body">
     <p id="cloudStatus" role="status" aria-live="polite">자료를 불러와 주세요.</p>
+    <section><h3>인터넷 사이트 · 다른 기기</h3><button id="openPublished">인터넷 사이트 열기</button><button id="copySetupLink">다른 기기용 연결설정 링크 복사</button><p>본인 기기에만 전달해 주세요. 로그인 토큰·메모·성경 자료는 포함하지 않습니다.</p></section>
     <section><h3>이 기기의 자료</h3><label class="cloud-file">파일 선택<input id="localFiles" type="file" multiple accept=".bdb,.sdb,.cdb,.hdb,.json,.jpg,.jpeg,.png"></label><label class="cloud-file">폴더 선택<input id="localFolder" type="file" multiple webkitdirectory></label><button id="openReader">성경 열기</button><div id="localInventory"></div></section>
     <section><h3>Google 연결</h3><label>웹 OAuth 클라이언트 ID<input id="oauthClientId" autocomplete="off" spellcheck="false"></label><label>Google Picker API 키<input id="pickerKey" autocomplete="off" spellcheck="false"></label><label>Google Cloud 프로젝트 번호<input id="projectNumber" inputmode="numeric" autocomplete="off"></label><button id="saveCloudConfig">설정 저장</button><button id="connectDrive">Google 연결</button><button id="disconnectDrive">연결 해제</button><button id="pickDriveFiles">Drive 자료 선택</button></section>
-    <section><h3>인터넷 사이트 · 다른 기기</h3><button id="openPublished">인터넷 사이트 열기</button><button id="copySetupLink">다른 기기용 연결설정 링크 복사</button><p>본인 기기에만 전달해 주세요. 로그인 토큰·메모·성경 자료는 포함하지 않습니다.</p></section>
     <section><h3>메모 백업</h3><button id="cloudBackup">Drive에 새 백업</button><button id="cloudRestore">Drive 백업 선택·복원</button><button id="downloadNotes">기기에 백업 다운로드</button></section>
     <section><h3>기기 관리</h3><p>공용 기기에서는 사용 후 자료를 삭제해 주세요. 연결 해제만으로 저장된 자료가 지워지지는 않습니다.</p><button id="forgetDevice" class="danger">이 기기의 자료 모두 삭제</button></section>
   </div>
