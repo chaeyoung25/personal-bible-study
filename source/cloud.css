@@ -1,0 +1,16 @@
+#cloudDialog { width: min(640px, calc(100vw - 20px)); max-height: calc(100dvh - 20px); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); }
+#cloudDialog::backdrop { background: #0006; }
+#cloudDialog header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+#cloudDialog h2 { margin: 0; font-size: 18px; }
+#cloudDialog header button { width: 40px; height: 40px; }
+.cloud-body { padding: 0 18px 18px; }
+.cloud-body section { border-top: 1px solid var(--line); padding-block: 12px; }
+.cloud-body h3 { font-size: 14px; margin: 6px 0 12px; }
+.cloud-body label { display: block; margin: 8px 0; font-size: 13px; }
+.cloud-body button { margin: 4px 6px 4px 0; padding: 8px 12px; }
+.cloud-file { border: 1px solid var(--line); padding: 8px; border-radius: 6px; }
+.cloud-file input { border: 0; padding: 6px 0; }
+#cloudStatus { overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }
+#localInventory { font-size: 12px; max-height: 160px; overflow: auto; white-space: pre-line; }
+.picker-dialog { z-index: 10000 !important; }
+@media(max-width:600px) { #cloudDialog input { font-size: 16px; } #cloudDialog { margin: auto; } }

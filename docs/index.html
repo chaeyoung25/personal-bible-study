@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src 'self' https://www.googleapis.com https://accounts.google.com https://content.googleapis.com; img-src 'self' blob: data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://docs.google.com https://drive.google.com; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <link rel="stylesheet" href="./cloud.css">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <title>Personal Bible Study</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./responsive.css">
+</head>
+<body>
+<dialog id="cloudDialog" aria-labelledby="cloudTitle">
+  <header><h2 id="cloudTitle">개인 자료 · Google Drive</h2><button id="closeCloud" aria-label="자료 관리 닫기">×</button></header>
+  <div class="cloud-body">
+    <p id="cloudStatus" role="status" aria-live="polite">자료를 불러와 주세요.</p>
+    <section><h3>이 기기의 자료</h3><label class="cloud-file">파일 선택<input id="localFiles" type="file" multiple accept=".bdb,.sdb,.cdb,.hdb,.json,.jpg,.jpeg,.png"></label><label class="cloud-file">폴더 선택<input id="localFolder" type="file" multiple webkitdirectory></label><button id="openReader">성경 열기</button><div id="localInventory"></div></section>
+    <section><h3>Google 연결</h3><label>웹 OAuth 클라이언트 ID<input id="oauthClientId" autocomplete="off" spellcheck="false"></label><label>Google Picker API 키<input id="pickerKey" autocomplete="off" spellcheck="false"></label><label>Google Cloud 프로젝트 번호<input id="projectNumber" inputmode="numeric" autocomplete="off"></label><button id="saveCloudConfig">설정 저장</button><button id="connectDrive">Google 연결</button><button id="disconnectDrive">연결 해제</button><button id="pickDriveFiles">Drive 자료 선택</button></section>
+    <section><h3>메모 백업</h3><button id="cloudBackup">Drive에 새 백업</button><button id="cloudRestore">Drive 백업 선택·복원</button><button id="downloadNotes">기기에 백업 다운로드</button></section>
+    <section><h3>기기 관리</h3><p>공용 기기에서는 사용 후 자료를 삭제해 주세요. 연결 해제만으로 저장된 자료가 지워지지는 않습니다.</p><button id="forgetDevice" class="danger">이 기기의 자료 모두 삭제</button></section>
+  </div>
+</dialog>
+
+  <nav class="compact-nav" aria-label="주요 메뉴"><strong>Personal Bible Study</strong><div><button id="compactCloud">Drive</button><button id="toggleNavigation" aria-controls="navigationPanel" aria-expanded="false">성경</button><button id="toggleStudy" aria-controls="studyPanel" aria-expanded="false">연구</button><button id="compactHymns">Hymns</button><button id="compactTopics">Topics</button></div></nav>
+  <button id="drawerBackdrop" aria-label="패널 닫기" hidden></button>
+  <aside class="rail" id="navigationPanel" aria-label="성경 탐색">
+    <div class="drawer-heading"><strong>성경 · 읽기 설정</strong><button data-close-drawer aria-label="탐색 닫기">×</button></div>
+    <div class="brand">
+      <strong>Personal Bible Study</strong>
+      <span>성경 읽기 · 연구</span>
+      <button id="openCloud">Drive · 자료 관리</button><button id="openHymns">Hymns</button>
+      <button id="openTopics">Topics</button>
+      <div class="research-actions"><button id="backupResearch">Backup</button><button id="restoreResearch">Restore</button><button id="exportResearch">Export</button></div>
+      <span id="researchStatus" role="status"></span>
+    </div>
+    <div class="reference-box">
+      <input id="refInput" placeholder="요3:16, 창1" autocomplete="off">
+      <button id="goRef">이동</button>
+    </div>
+    <div class="version-box">
+      <label>역본 대조</label>
+      <div id="versionSelectors"></div>
+      <button id="addVersion">역본 추가</button>
+    </div>
+    <div class="reading-settings">
+      <label for="verseSpacing">절 사이 여백 <output id="verseSpacingValue"></output></label>
+      <input id="verseSpacing" type="range" min="0" max="32" step="1">
+      <label for="lineSpacing">줄 간격 <output id="lineSpacingValue"></output></label>
+      <input id="lineSpacing" type="range" min="1.2" max="2.6" step="0.05">
+    </div>
+    <div class="book-list" id="bookList"></div>
+  </aside>
+
+  <main class="reader">
+    <header class="topbar">
+      <div>
+        <h1 id="title">요한복음 3장</h1>
+        <p id="subtitle"></p>
+      </div>
+      <div class="toolbar">
+        <select id="comparisonLayout" aria-label="역본 대조 배치"><option value="aligned">절별 정렬</option><option value="flow">자유 배치</option></select>
+        <button id="addPassagePane" title="본문 창 추가" aria-label="본문 창 추가">＋</button>
+        <button id="prevChapter" title="이전 장">‹</button>
+        <select id="chapterSelect" title="장 선택"></select>
+        <button id="nextChapter" title="다음 장">›</button>
+        <button id="fontDown" title="글자 작게">A-</button>
+        <button id="fontUp" title="글자 크게">A+</button>
+        <button id="themeToggle" title="테마">◐</button>
+      </div>
+    </header>
+    <div class="compact-panes"><select id="compactPaneSelect" aria-label="열린 본문 선택"></select><button id="compactAddPane" title="본문 창 추가" aria-label="본문 창 추가">＋</button><button id="compactClosePane" title="현재 본문 창 닫기" aria-label="현재 본문 창 닫기">×</button></div>
+    <div id="passageWorkspace"><section class="passage-pane" id="primaryPane"><div class="pane-controls"></div><section class="chapter-grid" id="chapterGrid"></section></section></div>
+  </main>
+
+  <aside class="study" id="studyPanel" aria-label="본문 연구">
+    <div class="drawer-heading"><strong>본문 연구</strong><button data-close-drawer aria-label="연구 닫기">×</button></div>
+    <div id="concordancePanel" class="panel" hidden>
+      <div class="panel-head"><strong id="concordanceTitle"></strong><button id="closeConcordance" aria-label="원어 용례 닫기">×</button></div>
+      <span id="concordanceCount" role="status"></span>
+      <select id="concordanceScope" aria-label="원어 용례 범위"><option value="all">성경 전체</option><option value="ot">구약</option><option value="nt">신약</option></select>
+      <input id="concordanceGrammar" placeholder="문법 필터: 명사, 동분사…" aria-label="문법 필터">
+      <details open><summary>단어 빈도 · 책별 분포</summary><div id="wordDistribution"></div></details>
+      <div id="concordanceResults" class="result-list"></div>
+    </div>
+    <div class="panel original-panel">
+      <div class="panel-head"><strong>본문 연구 가이드</strong><select id="originalVerse" aria-label="연구할 절 선택"></select></div>
+      <div id="passageGuide" aria-live="polite"></div>
+      <h3 class="guide-heading">원전분해</h3>
+      <div id="originalResults"></div>
+      <details><summary>관주 · 관련 구절</summary><div id="crossReferences" class="result-list"></div></details>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <strong>검색</strong>
+        <select id="searchVersion"></select>
+      </div>
+      <div class="search-row">
+        <input id="searchInput" placeholder="단어 또는 구절">
+        <button id="searchBtn">검색</button>
+      </div>
+      <div id="searchResults" class="result-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><strong>저장 목록</strong></div>
+      <select id="savedFilter" aria-label="저장 목록 종류">
+        <option value="all">전체 저장 자료</option>
+        <option value="underlines">밑줄 친 구절</option>
+        <option value="highlights">형광펜 칠한 구절</option>
+        <option value="notes">메모한 구절 · 장</option>
+      </select>
+      <select id="savedSort" aria-label="정렬 순서">
+        <option value="bible">성경 순서</option>
+        <option value="recent">최근 저장 순서</option>
+      </select>
+      <input id="savedQuery" placeholder="메모 내용 · 태그 검색" aria-label="저장 자료 검색">
+      <input id="savedTag" placeholder="태그로 필터" aria-label="태그 필터">
+      <div id="savedList" class="result-list"></div>
+    </div>
+  </aside>
+
+  <div id="memoPopup" class="memo-popup note-panel" role="dialog" aria-labelledby="noteRef" hidden>
+    <div class="panel-head"><strong id="noteRef">메모</strong><button id="closeMemo" title="닫기" aria-label="메모 닫기">×</button></div>
+    <textarea id="noteText" aria-label="메모 내용" placeholder="메모"></textarea>
+    <input id="noteTags" placeholder="태그: 설교 준비, 기도, 믿음" aria-label="메모 태그">
+    <div class="memo-footer"><button id="deleteNote" class="danger">메모 삭제</button><button id="saveNote" class="primary">저장</button></div>
+    <span id="saveStatus" role="status"></span>
+  </div>
+  <div id="selectionMenu" class="selection-menu" role="toolbar" aria-label="선택한 본문" hidden>
+    <button data-mark="tags">태그</button>
+    <button data-mark="highlight">형광펜</button>
+    <button data-mark="underline"><u>밑줄</u></button>
+    <button data-mark="memo">메모</button>
+    <button data-mark="original">원전분해</button>
+    <button data-mark="remove">표시 지우기</button>
+    <button data-mark="export">내보내기</button>
+  </div>
+  <div id="tagPopup" class="memo-popup tag-popup" role="dialog" aria-labelledby="tagRef" hidden>
+    <div class="panel-head"><strong id="tagRef">태그</strong><button id="closeTags" aria-label="태그 닫기">×</button></div>
+    <input id="markTags" placeholder="설교 준비, 기도, 믿음" aria-label="구절 태그">
+    <div class="memo-footer"><button id="saveTags" class="primary">저장</button></div>
+    <span id="tagStatus" role="status"></span>
+  </div>
+  <dialog id="hymnDialog" class="hymn-dialog">
+    <div id="hymnResizeEdge" class="hymn-resize-edge" title="드래그하여 창 너비 조절"></div>
+    <div class="hymn-resize-corner top-left" data-corner="nw" title="창 크기 조절"></div>
+    <div class="hymn-resize-corner top-right" data-corner="ne" title="창 크기 조절"></div>
+    <div class="hymn-resize-corner bottom-left" data-corner="sw" title="창 크기 조절"></div>
+    <div class="hymn-resize-corner bottom-right" data-corner="se" title="창 크기 조절"></div>
+    <header class="hymn-header"><strong>새찬송가</strong><div><button id="dockHymns" title="오른쪽에 나란히 배치">나란히</button><button id="closeHymns" aria-label="찬송가 닫기">×</button></div></header>
+    <div class="hymn-layout">
+      <aside class="hymn-sidebar"><input id="hymnSearch" placeholder="장 번호 · 제목 · 가사 검색" aria-label="찬송가 검색"><span id="hymnCount" role="status"></span><div id="hymnList"></div></aside>
+      <section class="hymn-content"><div class="panel-head"><h2 id="hymnTitle"></h2><div class="hymn-tabs"><button id="showScore" aria-pressed="true">악보</button><button id="showLyrics" aria-pressed="false">가사</button></div></div><div class="score-toolbar"><button id="scoreFit">전체 맞춤</button><button id="scoreZoomOut" title="악보 축소" aria-label="악보 축소">−</button><input id="scoreZoom" type="range" min="25" max="250" value="100" aria-label="악보 확대 비율"><output id="scoreZoomValue">100%</output><button id="scoreZoomIn" title="악보 확대" aria-label="악보 확대">+</button></div><div id="hymnScore"></div><pre id="hymnLyrics" hidden></pre></section>
+    </div>
+  </dialog>
+  <dialog id="exportDialog"><div class="panel-head"><strong>본문 · 메모 내보내기</strong><button id="closeExport">×</button></div><select id="exportScope"><option value="chapter">현재 장과 메모</option><option value="selection">선택 본문과 메모</option><option value="notes">저장된 메모 전체</option></select><div class="research-actions"><button id="exportTxt">TXT</button><button id="exportHtml">HTML</button><button id="printResearch">인쇄 · PDF</button></div></dialog>
+  <dialog id="topicsDialog" class="topics-dialog">
+    <div class="topic-resize-corner top-left" data-topic-corner="nw"></div>
+    <div class="topic-resize-corner top-right" data-topic-corner="ne"></div>
+    <div class="topic-resize-corner bottom-left" data-topic-corner="sw"></div>
+    <div class="topic-resize-corner bottom-right" data-topic-corner="se"></div>
+    <header class="topics-header"><div><strong>주제별 성경구절</strong><span>개역개정</span></div><button id="closeTopics" aria-label="주제별 성경구절 닫기">×</button></header>
+    <div class="topics-controls"><select id="topicSelect" aria-label="주제 선택"></select><input id="topicQuery" placeholder="구절 · 소제목 · 본문 검색" aria-label="주제 구절 검색"><select id="topicSort" aria-label="주제 구절 정렬"><option value="list">목록 순서</option><option value="bible">성경 순서</option></select></div>
+    <div id="topicCount" role="status"></div><div id="topicResults"></div>
+  </dialog>
+  <script src="./browser.js"></script>
+  <script src="./topics.js"></script>
+  <script src="./research.js"></script>
+  <script src="./panes.js"></script>
+  <script src="./responsive.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

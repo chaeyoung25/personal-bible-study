@@ -1,0 +1,13 @@
+*
+!.gitignore
+!docs/
+!docs/**
+!source/
+!source/**
+!build.py
+!SETUP.md
+!SECURITY.md
+!tests/
+!tests/**
+!.github/
+!.github/**
