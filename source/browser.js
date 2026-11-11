@@ -554,7 +554,7 @@ window.BrowserBible = (() => {
     if("serviceWorker" in navigator) {
       let updateRequested=false;
       navigator.serviceWorker.addEventListener("controllerchange",()=>{if(updateRequested)location.reload();});
-      navigator.serviceWorker.register(new URL("sw.js",BASE)).then(registration=>{
+      navigator.serviceWorker.register(new URL("sw.js",BASE),{updateViaCache:"none"}).then(registration=>{
         const offer=()=>{$c("applyAppUpdate").hidden=!registration.waiting;};
         offer();registration.addEventListener("updatefound",()=>registration.installing?.addEventListener("statechange",offer));
         $c("applyAppUpdate").onclick=()=>{

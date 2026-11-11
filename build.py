@@ -2,6 +2,7 @@
 import ast
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 
@@ -50,13 +51,29 @@ for path in (ROOT / "source").iterdir():
         shutil.copyfile(path, OUT / path.name)
 if not (OUT / "vendor" / "sql-wasm.wasm").exists():
     raise SystemExit("Missing vendored sql.js files. See SETUP.md.")
+# Give every script/style a content-specific URL, including on the first visit
+# while the previous service worker is still controlling the page.
+def version_asset(match):
+    path = OUT / match.group(2)
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+    return match.group(1) + match.group(2) + "?v=" + digest + match.group(3)
+html = re.sub(r'((?:src|href)="\./)([^"?]+\.(?:js|css))(")', version_asset, html)
+(OUT / "index.html").write_text(html)
 allowed = {p.name for p in OUT.iterdir() if p.is_file()}
 cache_files = sorted("./" + p.relative_to(OUT).as_posix() for p in OUT.rglob("*") if p.is_file() and p.name != "sw.js")
 revision = hashlib.sha256(b"".join((OUT / p[2:]).read_bytes() for p in cache_files)).hexdigest()[:16]
 sw = """const CACHE = 'bible-shell-REVISION';
 const ASSETS = ASSET_LIST;
 self.addEventListener('message', e => { if (e.data?.type === 'PBS_ACTIVATE') self.skipWaiting(); });
-self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))));
+self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(async c => {
+  for (const path of ASSETS) {
+    const url = new URL(path, self.location.href);
+    url.searchParams.set('build', CACHE);
+    const response = await fetch(url, {cache:'reload'});
+    if (!response.ok) throw new Error('App update download failed');
+    await c.put(new URL(path, self.location.href), response);
+  }
+})));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('bible-shell-') && k !== CACHE).map(k => caches.delete(k))))));
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return;
@@ -64,10 +81,14 @@ self.addEventListener('fetch', e => {
   const base = new URL('./', self.location.href);
   const relative = './' + u.pathname.slice(base.pathname.length);
   if (!ASSETS.includes(relative) && u.pathname !== base.pathname) return;
-  e.respondWith(fetch(e.request).then(r => {
+  e.respondWith(fetch(e.request, {cache:'no-store'}).then(r => {
     if (r.ok && r.type === 'basic') { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
     return r;
-  }).catch(() => caches.match(e.request).then(r => r || caches.match('./index.html'))));
+  }).catch(async () => {
+    const cache = await caches.open(CACHE);
+    const response = await cache.match(e.request, {ignoreSearch:true});
+    return response || (e.request.mode === 'navigate' && await cache.match('./index.html')) || Response.error();
+  }));
 });
 """.replace("REVISION", revision).replace("ASSET_LIST", json.dumps(cache_files))
 (OUT / "sw.js").write_text(sw)

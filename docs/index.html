@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src 'self' https://www.googleapis.com https://accounts.google.com https://content.googleapis.com; img-src 'self' blob: data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://docs.google.com https://drive.google.com; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <link rel="stylesheet" href="./cloud.css">
+  <link rel="stylesheet" href="./cloud.css?v=7d77833e93ee7ddf">
   <link rel="manifest" href="./manifest.webmanifest">
   <title>Personal Bible Study</title>
-  <link rel="stylesheet" href="./styles.css">
-  <link rel="stylesheet" href="./responsive.css">
+  <link rel="stylesheet" href="./styles.css?v=539fd925d5c5254a">
+  <link rel="stylesheet" href="./responsive.css?v=7117c9ae65cd642a">
 </head>
 <body>
 <dialog id="cloudDialog" aria-labelledby="cloudTitle">
@@ -169,15 +169,15 @@
     <div class="topics-controls"><select id="topicSelect" aria-label="주제 선택"></select><input id="topicQuery" placeholder="구절 · 소제목 · 본문 검색" aria-label="주제 구절 검색"><select id="topicSort" aria-label="주제 구절 정렬"><option value="list">목록 순서</option><option value="bible">성경 순서</option></select></div>
     <div id="topicCount" role="status"></div><div id="topicResults"></div>
   </dialog>
-  <script src="./vendor/fflate.min.js"></script>
-  <script src="./migration.js"></script>
-  <script src="./sync-engine.js"></script>
-  <script src="./drive-sync.js"></script>
-  <script src="./browser.js"></script>
-  <script src="./topics.js"></script>
-  <script src="./research.js"></script>
-  <script src="./panes.js"></script>
-  <script src="./responsive.js"></script>
-  <script src="./app.js"></script>
+  <script src="./vendor/fflate.min.js?v=c3b34f2e9f5e74d4"></script>
+  <script src="./migration.js?v=cb878ca558107ae6"></script>
+  <script src="./sync-engine.js?v=6e87115a66423f06"></script>
+  <script src="./drive-sync.js?v=24d4177edd76ac23"></script>
+  <script src="./browser.js?v=c116f2c4bd5a5013"></script>
+  <script src="./topics.js?v=40f2a980e81d81af"></script>
+  <script src="./research.js?v=7af8b6174f2cc013"></script>
+  <script src="./panes.js?v=8f570d57a4b70764"></script>
+  <script src="./responsive.js?v=23b7d5cb7273e189"></script>
+  <script src="./app.js?v=5d346e8a5abc05c2"></script>
 </body>
 </html>
