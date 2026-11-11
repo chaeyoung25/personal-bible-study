@@ -620,7 +620,7 @@ function bindEvents() {
   let hymns = [], selectedHymn = null, hymnRequest = 0, hymnTimer;
   let scoreScale = 100, scoreFit = true;
   const hymnWindow = $("hymnDialog");
-  // History stores only navigation markers. Hymn data stays in memory.
+  // One shared history for all app panels; private contents stay in memory.
   const hymnHistorySession = `${Date.now()}-${Math.random()}`;
   let hymnHistoryIndex = 0, applyingHymnHistory = false;
   const hymnScreens = [];
@@ -630,12 +630,17 @@ function bindEvents() {
     lyrics:!$("hymnLyrics").hidden, hymn:selectedHymn, query:$("hymnSearch").value,
     results:hymns, scale:scoreScale, fit:scoreFit, width:scoreWidth,
     scroll:[$("hymnScore").scrollLeft,$("hymnScore").scrollTop],
+    drawer:document.body.dataset.drawer || null,
+    topics:$("topicsDialog").open, cloud:Boolean($("cloudDialog")?.open),
+    topicValues:["topicSelect","topicQuery","topicSort"].map(id=>$(id).value),
+    topicScroll:$("topicResults").scrollTop,
+    memo:!$("memoPopup").hidden, concordance:!$("concordancePanel").hidden,
   });
   const rememberHymnScreen = () => { if (!applyingHymnHistory) hymnScreens[hymnHistoryIndex] = captureHymnScreen(); };
   const pushHymnScreen = () => {
     if (applyingHymnHistory) return;
     const next = captureHymnScreen(), current = hymnScreens[hymnHistoryIndex];
-    const identity = screen => JSON.stringify([screen.open,screen.search,screen.full,screen.split,screen.lyrics,screen.hymn?.number,screen.query]);
+    const identity = screen => JSON.stringify([screen.open,screen.search,screen.full,screen.split,screen.lyrics,screen.hymn?.number,screen.query,screen.drawer,screen.topics,screen.cloud,screen.topicValues,screen.memo,screen.concordance]);
     if (current && identity(current) === identity(next)) return;
     hymnScreens.splice(hymnHistoryIndex + 1);
     hymnScreens[++hymnHistoryIndex] = next;
@@ -873,6 +878,9 @@ function bindEvents() {
     };
   }
   hymnScreens[0] = captureHymnScreen();
+  // Initial reader setup may finish while its import dialog is still closing.
+  // The baseline is the reader, not that temporary setup dialog.
+  hymnScreens[0].cloud = false;
   history.replaceState({...history.state,pbsHymn:{session:hymnHistorySession,index:0}}, "");
   for (const id of ["openHymns","toggleHymnSearch","hymnReadingMode","fullHymns","showScore","showLyrics"]) {
     const action = $(id).onclick;
@@ -880,9 +888,30 @@ function bindEvents() {
   }
   const closeHymnWindow = $("closeHymns").onclick;
   $("closeHymns").onclick = () => {
-    if (hymnHistoryIndex > 0) history.go(-hymnHistoryIndex);
+    let target = hymnHistoryIndex - 1;
+    while (target > 0 && hymnScreens[target].open) target--;
+    if (hymnHistoryIndex > 0) history.go(target - hymnHistoryIndex);
     else closeHymnWindow();
   };
+  const panelHistoryObserver = new MutationObserver(() => pushHymnScreen());
+  panelHistoryObserver.observe(document.body,{attributes:true,attributeFilter:["data-drawer"]});
+  for (const id of ["topicsDialog","cloudDialog","memoPopup","concordancePanel"]) {
+    if ($(id)) panelHistoryObserver.observe($(id),{attributes:true,attributeFilter:["open","hidden"]});
+  }
+  document.addEventListener("click", event => {
+    if (event.target.closest("button,select")) rememberHymnScreen();
+    const close = event.target.closest("#closeTopics,#closeCloud,[data-close-drawer],#drawerBackdrop,#closeMemo,#closeConcordance");
+    if (!close || !hymnHistoryIndex) return;
+    const field = close.id === "closeTopics" ? "topics" : close.id === "closeCloud" ? "cloud" : close.id === "closeMemo" ? "memo" : close.id === "closeConcordance" ? "concordance" : "drawer";
+    if (!hymnScreens[hymnHistoryIndex][field]) return;
+    let target = hymnHistoryIndex - 1;
+    while (target > 0 && hymnScreens[target][field]) target--;
+    event.preventDefault(); event.stopImmediatePropagation();
+    history.go(target - hymnHistoryIndex);
+  },true);
+  for(const id of ["topicSelect","topicQuery","topicSort"]) {
+    $(id).addEventListener("change",pushHymnScreen);
+  }
   window.addEventListener("popstate", event => {
     const marker = event.state?.pbsHymn;
     if (marker?.session !== hymnHistorySession || !hymnScreens[marker.index]) return;
@@ -890,6 +919,18 @@ function bindEvents() {
     clearTimeout(hymnTimer); ++hymnRequest;
     hymnHistoryIndex = marker.index;
     const screen = hymnScreens[hymnHistoryIndex];
+    setStudyDrawer(screen.drawer);
+    for (const [id,open,modal] of [["topicsDialog",screen.topics,false],["cloudDialog",screen.cloud,true]]) {
+      const dialog=$(id);
+      if(!dialog)continue;
+      if(open&&!dialog.open)modal?dialog.showModal():dialog.show();
+      if(!open&&dialog.open)dialog.close();
+    }
+    ["topicSelect","topicQuery","topicSort"].forEach((id,index)=>$(id).value=screen.topicValues[index]);
+    if(screen.topics){renderTopics();$("topicResults").scrollTop=screen.topicScroll;}
+    $("memoPopup").hidden=!screen.memo;
+    if(!screen.concordance)state.concordanceRequest++;
+    $("concordancePanel").hidden=!screen.concordance;
     if (document.fullscreenElement === hymnWindow && !screen.full) document.exitFullscreen().catch(() => {});
     if (!screen.full) restoreHymnView();
     if (!screen.open) closeHymnWindow();
@@ -917,6 +958,7 @@ function bindEvents() {
       $("hymnSearch").blur();
       requestAnimationFrame(() => {sizeScore(); $("hymnScore").scrollTo(...screen.scroll);});
     }
+    panelHistoryObserver.takeRecords();
     applyingHymnHistory = false;
   });
   document.addEventListener("copy", (event) => {

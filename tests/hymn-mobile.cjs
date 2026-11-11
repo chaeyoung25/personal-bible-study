@@ -94,7 +94,41 @@ const find=name=>path.join(data,fs.readdirSync(data).find(file=>file.normalize('
   await page.locator('#closeHymns').click();
   await page.locator('#hymnDialog').waitFor({state:'hidden'});
   assert(await page.locator('.active-pane .verse-text').first().isVisible());
+  await page.setViewportSize({width:390,height:844});
+  for(const id of ['toggleStudy','toggleNavigation']) {
+   await page.locator('#'+id).click();
+   await page.waitForFunction(()=>Boolean(document.body.dataset.drawer));
+   await page.goBack();
+   await page.waitForFunction(()=>!document.body.dataset.drawer);
+   assert.equal(page.url(),appURL);
+  }
+  await page.locator('#compactTopics').click();
+  await page.locator('#topicsDialog').waitFor({state:'visible'});
+  const originalTopic=await page.locator('#topicSelect').inputValue();
+  await page.locator('#topicSelect').selectOption({index:0});
+  await page.goBack();
+  await page.waitForFunction(value=>document.querySelector('#topicSelect').value===value,originalTopic);
+  assert(await page.locator('#topicsDialog').isVisible());
+  await page.locator('#compactCloud').click();
+  await page.locator('#cloudDialog').waitFor({state:'visible'});
+  await page.goBack();
+  await page.locator('#cloudDialog').waitFor({state:'hidden'});
+  assert(await page.locator('#topicsDialog').isVisible());
+  await page.goBack();
+  await page.locator('#topicsDialog').waitFor({state:'hidden'});
+  assert.equal(page.url(),appURL);
+  // Close buttons consume their own history too, without reopening on Back.
+  await page.locator('#toggleStudy').click();
+  await page.locator('#studyPanel [data-close-drawer]').click();
+  await page.waitForFunction(()=>!document.body.dataset.drawer);
+  await page.locator('#compactCloud').click();
+  await page.locator('#closeCloud').click();
+  await page.locator('#cloudDialog').waitFor({state:'hidden'});
+  await page.locator('#compactTopics').click();
+  await page.goBack();
+  await page.locator('#topicsDialog').waitFor({state:'hidden'});
+  assert.equal(page.url(),appURL);
   assert.deepEqual(errors,[]);
-  console.log('PASS: mobile hymn search/select, keyboard blur, fullscreen and Bible split, fit/width/zoom, lyrics, previous/next, tablet and close to Bible.');
+  console.log('PASS: hymn navigation and shared Back/Forward for study/navigation drawers, topics/filters, Drive over Topics, close buttons and Bible return; no app departure.');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
