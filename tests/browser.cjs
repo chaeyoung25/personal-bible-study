@@ -58,6 +58,7 @@ const find=name=>path.join(fixtures,fs.readdirSync(fixtures).find(file=>file.nor
   await second.close();
   await page.setViewportSize({width:390,height:844});
   await page.locator("#compactCloud").click();
+  await page.locator("#autoSyncEnabled").uncheck();
   await page.screenshot({path:"/private/tmp/bible-pages-mobile.png"});
   // Mock Google's browser SDK/API; no production OAuth credentials or live uploads.
   await page.route("https://accounts.google.com/gsi/client",route=>route.fulfill({contentType:"application/javascript",body:

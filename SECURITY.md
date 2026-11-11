@@ -14,6 +14,12 @@
 - A browser Web Lock permits one active app tab to write at a time where
   supported. Restoring a back/forward-cached tab reloads before writing.
 - Each Drive backup is immutable. Explicit restore saves a local rescue first.
+- Sync uses private append-only event batches with per-field causal multi-value
+  registers, not device-clock last-writer-wins. Deletions are tombstones.
+  Concurrent values are retained until explicit user resolution.
+  Local notes and pending events commit atomically in IndexedDB before upload.
+  Failed uploads remain queued; replay is idempotent. No broader Drive scope,
+  public sharing, persisted token or always-running server is introduced.
 - Parameterized SQLite queries in a Worker; two-database LRU, query_only enabled.
   File signature/schema, size, notes structure and prototype keys are validated.
 - CSP restricts scripts to self and official Google Identity/Picker. No analytics.

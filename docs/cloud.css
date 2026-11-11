@@ -11,6 +11,13 @@
 .cloud-file { border: 1px solid var(--line); padding: 8px; border-radius: 6px; }
 .cloud-file input { border: 0; padding: 6px 0; }
 #cloudStatus { overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }
+.sync-toggle { display: flex !important; align-items: center; gap: 8px; }
+.sync-toggle input { width: 18px; height: 18px; }
+#syncStatus, .sync-summary { font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.sync-summary { display: block; width: 100%; text-align: left; padding: 8px; color: var(--muted); }
+.sync-conflict { border-top: 1px solid var(--line); padding-block: 10px; }
+.sync-conflict pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 140px; overflow: auto; }
+.sync-conflict textarea { min-height: 90px; }
 #localInventory { font-size: 12px; max-height: 160px; overflow: auto; white-space: pre-line; }
 .picker-dialog { z-index: 10000 !important; }
 @media(max-width:600px) { #cloudDialog input { font-size: 16px; } #cloudDialog { margin: auto; } }

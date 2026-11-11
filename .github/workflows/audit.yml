@@ -11,3 +11,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python tests/audit.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tests/sync-engine.cjs

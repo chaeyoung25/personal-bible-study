@@ -8,6 +8,7 @@ window.BrowserBible = (() => {
   const emptyNotes = () => ({bookmarks:[],notes:{},tags:{},highlights:{},underlines:{},updated:{},annotations:[]});
   let db, worker, requestId = 0, token = "", tokenExpires = 0, running = false, busy = false;
   let readerInit, catalog = [], books = [], identity = null;
+  let notesSync=null,presentedNotes=null,conflictSignature="",sessionController=new AbortController();
   const pending = new Map(), imageUrls = new Map();
   const settingsPrefix = "pbs-pages-v1:";
   const settings = {
@@ -33,6 +34,55 @@ window.BrowserBible = (() => {
       const tx = db.transaction(store,"readwrite"); tx.objectStore(store).put(value,key);
       tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error || Error("저장 중단"));
     });
+  }
+  function commitSyncedNotes(model,notes){
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction("kv","readwrite"),store=tx.objectStore("kv");
+      store.put(model,"sync-state");store.put(notes,"notes");
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+    });
+  }
+  function paintSyncedNotes(notes){
+    presentedNotes=structuredClone(notes);
+    if(!running)return;
+    const buffers=[];
+    for(const id of ["noteText","noteTags","markTags"]){
+      const element=$c(id);
+      if(element&&!element.closest("[hidden]"))buffers.push([element,element.value,element.selectionStart,element.selectionEnd]);
+    }
+    state.notes=notes;renderNotes();if(state.passage)renderPassage(state.passage);refreshPassagePanes();
+    for(const [element,value,start,end] of buffers){element.value=value;if(element.setSelectionRange&&start!==null)element.setSelectionRange(start,end);}
+  }
+  function reportSync(text,conflicts,pendingCount){
+    $c("syncStatus").textContent=text+(pendingCount?" · "+pendingCount+"건 대기":"");
+    if($c("compactCloud")){$c("compactCloud").title=text;$c("compactCloud").setAttribute("aria-label","Drive · "+text);}
+    if($c("openSyncStatus"))$c("openSyncStatus").textContent=conflicts.length?"동시 수정 "+conflicts.length+"건 · 확인":text;
+    const signature=JSON.stringify(conflicts);
+    if(signature===conflictSignature)return;
+    conflictSignature=signature;
+    const target=$c("syncConflicts");
+    const drafts=new Map([...target.querySelectorAll(".sync-conflict")].map(section=>[section.dataset.register,section.querySelector("textarea")?.value]));
+    target.replaceChildren();
+    for(const conflict of conflicts){
+      const key=JSON.parse(conflict.key),section=document.createElement("section");section.className="sync-conflict";
+      section.dataset.register=conflict.key;
+      const heading=document.createElement("strong");heading.textContent=(key[1]||"북마크")+" · "+({notes:"메모",tags:"태그",highlights:"형광펜",underlines:"밑줄",annotations:"선택 표시"}[key[0]]||key[0])+" 동시 수정";
+      section.append(heading);
+      for(const choice of conflict.choices){
+        const content=document.createElement("pre");content.textContent=choice.value===null?"[삭제됨]":typeof choice.value==="string"?choice.value:JSON.stringify(choice.value,null,2);
+        const use=document.createElement("button");use.textContent="이 내용 사용";
+        use.onclick=()=>notesSync.resolve(conflict.key,choice.value).catch(error=>status(error.message));
+        section.append(content,use);
+      }
+      if(key[0]==="notes"){
+        const merged=document.createElement("textarea");merged.setAttribute("aria-label","충돌 메모 합치기");
+        merged.value=drafts.get(conflict.key)??conflict.choices.filter(c=>typeof c.value==="string").map(c=>c.value).join("\n\n");
+        const save=document.createElement("button");save.textContent="합친 메모 저장";
+        save.onclick=()=>notesSync.resolve(conflict.key,merged.value).catch(error=>status(error.message));
+        section.append(merged,save);
+      }
+      target.append(section);
+    }
   }
   async function inventory() {
     catalog = await new Promise((resolve,reject) => {
@@ -107,7 +157,7 @@ window.BrowserBible = (() => {
     if (ext === "json") {
       if (buffer.byteLength>8*1048576) throw Error("메모 파일이 너무 큽니다.");
       const notes = validateNotes(JSON.parse(new TextDecoder().decode(buffer)));
-      if (!confirm("선택한 메모로 이 기기의 메모를 복원할까요? 현재 메모는 복원 전 백업으로 보존됩니다.")) return;
+      if (!confirm("선택한 백업으로 메모를 복원할까요? 현재 메모는 기기에 복구용으로 보존됩니다. 자동 동기화가 켜져 있으면 이 복원 결과가 다른 기기에도 반영됩니다.")) return;
       await restoreNotes(notes); return;
     }
     let kind;
@@ -141,9 +191,7 @@ window.BrowserBible = (() => {
     });
   }
   async function restoreNotes(notes) {
-    const current = await storeGet("kv","notes") || emptyNotes();
-    await storePut("kv","rescue-" + Date.now(),current);
-    await storePut("kv","notes",notes);
+    await notesSync.save(notes,true);
     if (running) { state.notes=notes; renderNotes(); if(state.passage)renderPassage(state.passage); refreshPassagePanes(); }
   }
   const snapshot = data => ({format:"personal-bible-study",schema:1,savedAt:new Date().toISOString(),data});
@@ -182,8 +230,14 @@ window.BrowserBible = (() => {
       return {reference};
     }
     if(route==="/api/notes"){
-      if(options.method==="POST"){await storePut("kv","notes",validateNotes(JSON.parse(options.body)));return {ok:true};}
-      return await storeGet("kv","notes")||emptyNotes();
+      if(options.method==="POST"){
+        await notesSync.save(validateNotes(JSON.parse(options.body)),false,presentedNotes);
+        const current=await storeGet("kv","notes");presentedNotes=structuredClone(current);
+        if(running)state.notes=current;
+        return {ok:true};
+      }
+      const notes=await storeGet("kv","notes")||emptyNotes();
+      presentedNotes=structuredClone(notes);return notes;
     }
     if(route==="/api/research-backup") return withBusy(()=>backupDrive());
     if(route==="/api/research-restore-latest"){
@@ -251,10 +305,11 @@ window.BrowserBible = (() => {
       if(!owner && !confirm(account.email+" 계정을 이 기기의 자료와 연결할까요?"))throw Error("계정 연결을 취소했습니다.");
       await storePut("kv","drive-owner",account.sub);
       status("Google 연결 완료: "+account.email+". 선택한 파일에만 접근합니다.");
+      notesSync?.connected();
     } catch(error) {token="";tokenExpires=0;throw error;}
   }
   async function driveFetch(path,options={}){
-    const response=await fetch("https://www.googleapis.com/"+path,{...options,headers:{...options.headers,Authorization:"Bearer "+needToken()},cache:"no-store",referrerPolicy:"no-referrer"});
+    const response=await fetch("https://www.googleapis.com/"+path,{...options,signal:options.signal||sessionController.signal,headers:{...options.headers,Authorization:"Bearer "+needToken()},cache:"no-store",referrerPolicy:"no-referrer"});
     if(response.status===401){token="";throw Error("Google 연결이 만료되었습니다.");}
     if(!response.ok)throw Error("Drive 작업 실패 ("+response.status+"). 접근 권한·용량·네트워크를 확인해 주세요.");
     return response;
@@ -310,7 +365,7 @@ window.BrowserBible = (() => {
   async function forgetDevice(){
     if(busy)throw Error("진행 중인 작업이 끝난 뒤 삭제해 주세요.");
     if(!confirm("이 기기의 성경·찬송가·메모·백업·설정을 모두 삭제할까요? 드라이브 원본은 삭제하지 않습니다. 저장하지 않은 메모는 복구할 수 없습니다."))return;
-    token="";tokenExpires=0;worker.terminate();
+    notesSync?.stop();sessionController.abort();token="";tokenExpires=0;worker.terminate();
     for(const url of imageUrls.values())URL.revokeObjectURL(url);
     db.close();
     await new Promise((resolve,reject)=>{
@@ -351,6 +406,17 @@ window.BrowserBible = (() => {
       }
     }
     initializeWorker();
+    notesSync=await createDriveNotesSync({
+      get:key=>storeGet("kv",key),put:(key,value)=>storePut("kv",key,value),
+      commit:commitSyncedNotes,empty:emptyNotes,validate:validateNotes,safe:assertSafeObject,
+      fetch:driveFetch,connected:()=>Boolean(token&&Date.now()<tokenExpires&&!busy),
+      paint:paintSyncedNotes,report:reportSync,backup:backupDrive,
+    });
+    $c("autoSyncEnabled").checked=notesSync.enabled;
+    $c("autoSyncEnabled").onchange=()=>notesSync.enable($c("autoSyncEnabled").checked).catch(error=>status(error.message));
+    $c("syncNow").onclick=()=>notesSync.sync();
+    $c("openSyncStatus").onclick=showCloud;
+    document.addEventListener("focusin",event=>{if(["noteText","noteTags","markTags"].includes(event.target.id))notesSync.beginEdit();});
     books=await fetch(new URL("books.json",BASE)).then(r=>r.json());
     await inventory();
     const settings=await storeGet("kv","public-config")||{};
@@ -367,7 +433,7 @@ window.BrowserBible = (() => {
     action("closeCloud",()=>{if(!running)return status("성경 자료를 추가하고 성경 열기를 눌러주세요.");$c("cloudDialog").close();});
     action("saveCloudConfig",async()=>{await storePut("kv","public-config",config());status("공개 클라이언트 설정을 이 기기에 저장했습니다.");});
     action("connectDrive",connect);
-    action("disconnectDrive",()=>{if(token&&window.google?.accounts)google.accounts.oauth2.revoke(token,()=>{});token="";tokenExpires=0;status("연결을 해제했습니다. 기기 자료는 남아 있습니다.");});
+    action("disconnectDrive",()=>{if(token&&window.google?.accounts)google.accounts.oauth2.revoke(token,()=>{});sessionController.abort();sessionController=new AbortController();token="";tokenExpires=0;notesSync?.disconnected();status("연결을 해제했습니다. 기기 자료는 남아 있습니다.");});
     action("pickDriveFiles",()=>pickFiles());action("cloudRestore",()=>pickFiles(true));action("cloudBackup",()=>withBusy(backupDrive));
     const setupLink=()=>PUBLISHED+"#setup="+encodeURIComponent(JSON.stringify(config()));
     action("openPublished",()=>{location.assign(setupLink());});
@@ -383,7 +449,19 @@ window.BrowserBible = (() => {
       await readerInit();running=true;$c("cloudDialog").close();
     });
     $c("cloudDialog").addEventListener("cancel",event=>{if(!running)event.preventDefault();});
-    if("serviceWorker" in navigator)navigator.serviceWorker.register(new URL("sw.js",BASE)).catch(()=>status("오프라인 앱 설치는 지원되지 않는 환경입니다."));
+    if("serviceWorker" in navigator) {
+      let updateRequested=false;
+      navigator.serviceWorker.addEventListener("controllerchange",()=>{if(updateRequested)location.reload();});
+      navigator.serviceWorker.register(new URL("sw.js",BASE)).then(registration=>{
+        const offer=()=>{$c("applyAppUpdate").hidden=!registration.waiting;};
+        offer();registration.addEventListener("updatefound",()=>registration.installing?.addEventListener("statechange",offer));
+        $c("applyAppUpdate").onclick=()=>{
+          if(!registration.waiting)return;
+          if(!confirm("입력 중인 메모를 먼저 저장해 주세요. 새 버전을 적용하고 화면을 다시 열까요?"))return;
+          updateRequested=true;registration.waiting.postMessage({type:"PBS_ACTIVATE"});
+        };
+      }).catch(()=>status("오프라인 앱 설치는 지원되지 않는 환경입니다."));
+    }
     if(catalog.some(f=>f.kind==="translation")){await readerInit();running=true;}
     else showCloud();
   }

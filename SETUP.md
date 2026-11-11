@@ -69,14 +69,38 @@ Never send passwords, client secrets, refresh tokens or recovery codes.
    does not grant access to its children. Downloads run sequentially.
 9. Press 성경 열기. Browser SQLite searches run in a Worker using vendored sql.js.
 
-## Notes
+## Automatic synchronization (browser edition)
 
-- Changes save to this device first, NOT automatically to Drive.
+- Google 연결 후 자동 동기화가 기본으로 켜집니다.
+- 변경은 IndexedDB에 즉시 저장되고 마지막 변경 약 5초 후 Drive로 전송됩니다.
+- 앱이 열린 동안 20초마다 다른 기기의 변경을 확인합니다. 화면으로 돌아오거나
+  인터넷이 복구되면 다시 확인합니다. 연결 만료 시 Google 연결을 다시 눌러주세요.
+- 인터넷·브라우저 중지·모바일 절전 때문에 지연될 수 있습니다. 앱이 닫힌 동안
+  계속 실행되지는 않습니다. 나가기 전에 동기화 완료 표시를 확인하세요.
+- 자동 동기화는 메모·태그·형광펜·밑줄·선택 표시를 대상으로 합니다.
+  성경 DB·악보 다운로드나 화면 배치는 자동 동기화하지 않습니다.
+- Drive에는 pbs-sync-v1-UUID.json 형태의 비공개 변경 기록이 새 파일로 쌓입니다.
+  기존 파일을 덮어쓰지 않으며, 모든 기기에서 동일한 OAuth 앱·계정을 사용해야 합니다.
+- 기존 메모는 첫 연결 때 변경 기록으로 등록됩니다. 구형 앱은 자동 동기화를
+  지원하지 않으므로 모든 기기에서 새 버전을 열어 주세요.
+- 같은 항목을 동시에 바꾸면 두 내용을 보존합니다. Drive 자료 관리의
+  동시 수정 항목에서 하나를 선택하거나 메모를 합쳐 저장하세요.
+- 삭제도 기록되므로 예전 파일을 다시 받아도 삭제한 메모가 되살아나지 않습니다.
+- 첫 변경 동기화 후, 이후 변경이 있고 마지막 백업으로부터 24시간이 지나면
+  별도 복구용 전체 백업을 만듭니다. 수동 Backup도 계속 사용할 수 있습니다.
+- 변경 파일을 임의 삭제하면 새 기기가 전체 이력을 받지 못할 수 있습니다.
+  자동 정리는 아직 하지 않으므로 사용량이 커지면 백업 후 별도 정리가 필요합니다.
+
+## Manual recovery
+
+- Changes save to this device first; automatic Drive sync requires an active
+  connection and the automatic-sync checkbox enabled.
 - Backup / Drive에 새 백업 creates a private timestamp-and-UUID snapshot in
   My Drive ROOT. No sharing permissions are changed or added.
 - Another device: Drive 백업 선택·복원, explicitly choose a snapshot and confirm.
-  A local rescue snapshot is saved first. No silent merge or latest-file guess.
-  Work sequentially across devices.
+  A local rescue snapshot is saved first. Restore creates explicit new changes
+  which can then synchronize to other devices; do not restore an old snapshot
+  merely to refresh another device. Use automatic sync / 지금 동기화 instead.
 - Import original user_data/notes.json or a downloaded backup to migrate notes.
 - 기기에 백업 다운로드 works without Google.
 - Access tokens remain in memory, expire and require reconnection. They are
