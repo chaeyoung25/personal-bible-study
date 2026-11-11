@@ -18,6 +18,21 @@ const find=name=>path.join(data,fs.readdirSync(data).find(file=>file.normalize('
   await page.locator('#hymnList button[data-number="50"]').click();
   assert.equal(await page.locator('#toggleHymnSearch').getAttribute('aria-expanded'),'false');
   await page.waitForFunction(()=>document.querySelector('#hymnScore img')?.naturalWidth>0);
+  // Android back maps to browser history traversal, without leaving the app.
+  const appURL=page.url();
+  await page.goBack();
+  await page.waitForFunction(()=>document.querySelector('#hymnDialog').classList.contains('search-open'));
+  assert.equal(page.url(),appURL);
+  await page.goBack();
+  await page.locator('#hymnDialog').waitFor({state:'hidden'});
+  assert.equal(page.url(),appURL);
+  await page.goForward();
+  await page.locator('#hymnDialog').waitFor({state:'visible'});
+  await page.goForward();
+  await page.waitForFunction(()=>!document.querySelector('#hymnDialog').classList.contains('search-open'));
+  await page.locator('#showLyrics').click();
+  await page.goBack();
+  await page.locator('#hymnScore').waitFor({state:'visible'});
   for(const width of [360,390,600]){
    await page.setViewportSize({width,height:844});
    await page.locator('#scoreFit').click();
@@ -54,7 +69,9 @@ const find=name=>path.join(data,fs.readdirSync(data).find(file=>file.normalize('
    });
    assert(m.height>=height-2,JSON.stringify(m));assert(Math.abs(m.width-width)<2);assert.equal(m.top,0);
    if(width===820)await page.screenshot({path:'/private/tmp/bible-hymn-fullscreen-tablet.png'});
-   await page.locator('#exitFullHymns').click();
+   if(width===390)await page.goBack();
+   else await page.locator('#exitFullHymns').click();
+   await page.waitForFunction(()=>!document.querySelector('#hymnDialog').classList.contains('score-fullscreen'));
    assert(await page.locator('.score-toolbar').isVisible());
   }
   // Native fullscreen also returns to the hymn without closing it.
@@ -75,6 +92,7 @@ const find=name=>path.join(data,fs.readdirSync(data).find(file=>file.normalize('
   await page.setViewportSize({width:820,height:1100});
   assert(await page.locator('#hymnSearch').isVisible());
   await page.locator('#closeHymns').click();
+  await page.locator('#hymnDialog').waitFor({state:'hidden'});
   assert(await page.locator('.active-pane .verse-text').first().isVisible());
   assert.deepEqual(errors,[]);
   console.log('PASS: mobile hymn search/select, keyboard blur, fullscreen and Bible split, fit/width/zoom, lyrics, previous/next, tablet and close to Bible.');

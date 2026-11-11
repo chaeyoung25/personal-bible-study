@@ -620,6 +620,27 @@ function bindEvents() {
   let hymns = [], selectedHymn = null, hymnRequest = 0, hymnTimer;
   let scoreScale = 100, scoreFit = true;
   const hymnWindow = $("hymnDialog");
+  // History stores only navigation markers. Hymn data stays in memory.
+  const hymnHistorySession = `${Date.now()}-${Math.random()}`;
+  let hymnHistoryIndex = 0, applyingHymnHistory = false;
+  const hymnScreens = [];
+  const captureHymnScreen = () => ({
+    open:hymnWindow.open, search:hymnWindow.classList.contains("search-open"),
+    full:hymnWindow.classList.contains("score-fullscreen"), split:hymnWindow.classList.contains("bible-visible"),
+    lyrics:!$("hymnLyrics").hidden, hymn:selectedHymn, query:$("hymnSearch").value,
+    results:hymns, scale:scoreScale, fit:scoreFit, width:scoreWidth,
+    scroll:[$("hymnScore").scrollLeft,$("hymnScore").scrollTop],
+  });
+  const rememberHymnScreen = () => { if (!applyingHymnHistory) hymnScreens[hymnHistoryIndex] = captureHymnScreen(); };
+  const pushHymnScreen = () => {
+    if (applyingHymnHistory) return;
+    const next = captureHymnScreen(), current = hymnScreens[hymnHistoryIndex];
+    const identity = screen => JSON.stringify([screen.open,screen.search,screen.full,screen.split,screen.lyrics,screen.hymn?.number,screen.query]);
+    if (current && identity(current) === identity(next)) return;
+    hymnScreens.splice(hymnHistoryIndex + 1);
+    hymnScreens[++hymnHistoryIndex] = next;
+    history.pushState({...history.state,pbsHymn:{session:hymnHistorySession,index:hymnHistoryIndex}}, "");
+  };
   const fullHymnButton = document.createElement("button");
   fullHymnButton.id = "fullHymns"; fullHymnButton.textContent = "전체 화면";
   $("closeHymns").before(fullHymnButton);
@@ -648,11 +669,15 @@ function bindEvents() {
     requestAnimationFrame(sizeScore);
   };
   exitHymnButton.onclick = () => {
+    if (hymnHistoryIndex > 0 && hymnScreens[hymnHistoryIndex]?.full) { history.back(); return; }
     if (document.fullscreenElement === hymnWindow) document.exitFullscreen().catch(() => {});
     restoreHymnView();
   };
   document.addEventListener("fullscreenchange", () => {
-    if (!document.fullscreenElement && hymnWindow.classList.contains("score-fullscreen")) restoreHymnView();
+    if (!document.fullscreenElement && hymnWindow.classList.contains("score-fullscreen")) {
+      restoreHymnView();
+      if (!applyingHymnHistory && hymnScreens[hymnHistoryIndex]?.full) history.back();
+    }
     else requestAnimationFrame(sizeScore);
   });
   hymnWindow.addEventListener("keydown", event => {
@@ -810,7 +835,7 @@ function bindEvents() {
         const button = document.createElement("button");
         button.textContent = `${hymn.number}장 ${hymn.title}`;
         button.dataset.number = hymn.number;
-        button.onclick = () => { showHymn(hymn); if (mobileHymns()) setHymnSearch(false); };
+        button.onclick = () => { rememberHymnScreen(); showHymn(hymn); if (mobileHymns()) setHymnSearch(false); pushHymnScreen(); };
         $("hymnList").append(button);
       });
       if (hymns.length) showHymn(hymns.find((hymn) => hymn.number === selectedHymn?.number) || hymns[0]);
@@ -825,13 +850,13 @@ function bindEvents() {
       const payload = await api(`/api/hymns?q=${number}`);
       if (request !== hymnRequest) return;
       const hymn = payload.results.find(item => item.number === number);
-      if (hymn) { showHymn(hymn); setHymnSearch(false); }
+      if (hymn) { rememberHymnScreen(); showHymn(hymn); setHymnSearch(false); pushHymnScreen(); }
     } catch (error) { $("hymnCount").textContent = error.message; }
   };
   $("previousHymn").onclick = () => moveHymn(-1);
   $("nextHymn").onclick = () => moveHymn(1);
   $("hymnSearch").onkeydown = event => {
-    if (event.key === "Enter") { event.preventDefault(); clearTimeout(hymnTimer); searchHymns().then(() => { if (hymns.length === 1 && mobileHymns()) setHymnSearch(false); }); }
+    if (event.key === "Enter") { event.preventDefault(); clearTimeout(hymnTimer); searchHymns().then(() => { if (hymns.length === 1 && mobileHymns()) { rememberHymnScreen(); setHymnSearch(false); pushHymnScreen(); } }); }
   };
   $("openHymns").onclick = () => { if (!hymnWindow.open) hymnWindow.show(); dock(); searchHymns(); setHymnSearch(!selectedHymn); if (!mobileHymns()) $("hymnSearch").focus(); };
   $("closeHymns").onclick = () => { hymnWindow.close(); document.body.classList.remove("hymn-open"); };
@@ -847,6 +872,53 @@ function bindEvents() {
       requestAnimationFrame(sizeScore);
     };
   }
+  hymnScreens[0] = captureHymnScreen();
+  history.replaceState({...history.state,pbsHymn:{session:hymnHistorySession,index:0}}, "");
+  for (const id of ["openHymns","toggleHymnSearch","hymnReadingMode","fullHymns","showScore","showLyrics"]) {
+    const action = $(id).onclick;
+    $(id).onclick = event => { rememberHymnScreen(); action(event); pushHymnScreen(); };
+  }
+  const closeHymnWindow = $("closeHymns").onclick;
+  $("closeHymns").onclick = () => {
+    if (hymnHistoryIndex > 0) history.go(-hymnHistoryIndex);
+    else closeHymnWindow();
+  };
+  window.addEventListener("popstate", event => {
+    const marker = event.state?.pbsHymn;
+    if (marker?.session !== hymnHistorySession || !hymnScreens[marker.index]) return;
+    applyingHymnHistory = true;
+    clearTimeout(hymnTimer); ++hymnRequest;
+    hymnHistoryIndex = marker.index;
+    const screen = hymnScreens[hymnHistoryIndex];
+    if (document.fullscreenElement === hymnWindow && !screen.full) document.exitFullscreen().catch(() => {});
+    if (!screen.full) restoreHymnView();
+    if (!screen.open) closeHymnWindow();
+    else {
+      if (!hymnWindow.open) hymnWindow.show();
+      document.body.classList.add("hymn-open");
+      hymnWindow.classList.toggle("search-open",screen.search);
+      hymnWindow.classList.toggle("bible-visible",screen.split);
+      hymnWindow.classList.toggle("score-fullscreen",screen.full);
+      $("toggleHymnSearch").setAttribute("aria-expanded",String(screen.search));
+      $("hymnReadingMode").textContent = screen.split ? "크게 보기" : "성경 함께";
+      $("hymnSearch").value = screen.query;
+      hymns = screen.results;
+      $("hymnList").replaceChildren();
+      hymns.forEach(hymn => {
+        const button = document.createElement("button");
+        button.textContent = `${hymn.number}장 ${hymn.title}`; button.dataset.number = hymn.number;
+        button.onclick = () => { rememberHymnScreen(); showHymn(hymn); if(mobileHymns())setHymnSearch(false); pushHymnScreen(); };
+        $("hymnList").append(button);
+      });
+      $("hymnCount").textContent = `${hymns.length}곡`;
+      if (screen.hymn) showHymn(screen.hymn);
+      $(screen.lyrics ? "showLyrics" : "showScore").onclick();
+      scoreFit=screen.fit;scoreScale=screen.scale;scoreWidth=screen.width;
+      $("hymnSearch").blur();
+      requestAnimationFrame(() => {sizeScore(); $("hymnScore").scrollTo(...screen.scroll);});
+    }
+    applyingHymnHistory = false;
+  });
   document.addEventListener("copy", (event) => {
     const selection = window.getSelection();
     if (!selection.rangeCount || selection.isCollapsed || !event.clipboardData) return;
