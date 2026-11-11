@@ -65,11 +65,14 @@ const find=name=>path.join(fixtures,fs.readdirSync(fixtures).find(file=>file.nor
     'window.google={accounts:{oauth2:{initTokenClient: options=>({requestAccessToken:()=>options.callback({access_token:"test-access-memory-only",expires_in:3600,scope:"openid email https://www.googleapis.com/auth/drive.file"})}),revoke:()=>{}}}};'
   }));
   await page.route("https://apis.google.com/js/api.js",route=>route.fulfill({contentType:"application/javascript",body:'window.gapi={load:(_,o)=>o.callback()};'}));
-  let uploads=0,account="account-one";
+  let uploads=0,account="account-one",releaseIdentity;
   await page.route("https://www.googleapis.com/**",async route=>{
     assert.equal(route.request().headers().authorization,"Bearer test-access-memory-only");
     assert(!route.request().url().includes("test-access-memory-only"));
-    if(route.request().url().includes("userinfo"))return route.fulfill({json:{sub:account,email:"tester@example.com",email_verified:true}});
+    if(route.request().url().includes("userinfo")){
+      if(account==="account-two")await new Promise(resolve=>{releaseIdentity=resolve;});
+      return route.fulfill({json:{sub:account,email:"tester@example.com",email_verified:true}});
+    }
     if(route.request().url().includes("upload/")){
       const body=route.request().postData();
       assert(!body.includes('"permissions"'));
@@ -107,6 +110,12 @@ const find=name=>path.join(fixtures,fs.readdirSync(fixtures).find(file=>file.nor
   await bridge.close();
   account="account-two";
   await page.locator("#disconnectDrive").click();await page.locator("#connectDrive").click();
+  for(let i=0;i<100&&!releaseIdentity;i++)await new Promise(resolve=>setTimeout(resolve,20));
+  assert(releaseIdentity,"identity check is pending");
+  await page.locator("#cloudBackup").click();
+  await page.waitForFunction(()=>document.querySelector("#cloudStatus").textContent.includes("계정 확인"));
+  assert.equal(uploads,1,"no upload before account verification");
+  releaseIdentity();
   await page.waitForFunction(()=>document.querySelector("#cloudStatus").textContent.includes("다른 Google 계정"));
   await page.locator("#cloudBackup").click();
   await page.waitForFunction(()=>document.querySelector("#cloudStatus").textContent.includes("Google 연결이 필요"));

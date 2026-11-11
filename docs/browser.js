@@ -8,7 +8,7 @@ window.BrowserBible = (() => {
   const emptyNotes = () => ({bookmarks:[],notes:{},tags:{},highlights:{},underlines:{},updated:{},annotations:[]});
   let db, worker, requestId = 0, token = "", tokenExpires = 0, running = false, busy = false;
   let readerInit, catalog = [], books = [], identity = null;
-  let notesSync=null,presentedNotes=null,conflictSignature="",sessionController=new AbortController();
+  let notesSync=null,presentedNotes=null,conflictSignature="",verifiedSession=false,authGeneration=0,sessionController=new AbortController();
   const pending = new Map(), imageUrls = new Map();
   const settingsPrefix = "pbs-pages-v1:";
   const settings = {
@@ -281,16 +281,22 @@ window.BrowserBible = (() => {
     if(clientProject && clientProject!==value.project)throw Error("OAuth 클라이언트 ID와 프로젝트 번호가 서로 다릅니다. 같은 Google Cloud 프로젝트의 번호를 입력해 주세요.");
     return value;
   }
-  function needToken(){
-    if(!token||Date.now()>=tokenExpires){token="";throw Error("Google 연결이 필요하거나 만료됐습니다. Google 연결을 다시 눌러주세요.");}
+  function needToken(requireVerified=true){
+    if(!token||Date.now()>=tokenExpires){token="";verifiedSession=false;throw Error("Google 연결이 필요하거나 만료됐습니다. Google 연결을 다시 눌러주세요.");}
+    if(requireVerified&&!verifiedSession)throw Error("Google 계정 확인이 완료될 때까지 기다려주세요.");
     return token;
   }
   async function connect(){
+    if(busy)throw Error("자료 작업이 끝난 뒤 Google 계정을 연결해 주세요.");
+    const generation=++authGeneration;
+    verifiedSession=false;token="";tokenExpires=0;
+    sessionController.abort();sessionController=new AbortController();
     const settings=config(); await ensureGoogle();
     await new Promise((resolve,reject)=>{
       identity=google.accounts.oauth2.initTokenClient({
         client_id:settings.clientId,scope:"openid email https://www.googleapis.com/auth/drive.file",include_granted_scopes:false,
         callback:response=>{
+          if(generation!==authGeneration)return reject(Error("이전 Google 연결 요청이 취소됐습니다."));
           if(response.error)return reject(Error("Google 접근 허용이 완료되지 않았습니다."));
           if(!(response.scope||"").split(/\s+/).includes("https://www.googleapis.com/auth/drive.file"))return reject(Error("선택한 Drive 파일 접근 권한이 허용되지 않았습니다. Google 연결에서 해당 권한을 허용해 주세요."));
           token=response.access_token;tokenExpires=Date.now()+Number(response.expires_in||3600)*1000-30000;resolve();
@@ -299,18 +305,21 @@ window.BrowserBible = (() => {
     });
     try {
       const account=await driveFetch("oauth2/v3/userinfo").then(r=>r.json());
+      if(generation!==authGeneration)throw Error("Google 연결 요청이 변경됐습니다.");
       if(!account.sub || !account.email_verified)throw Error("Google 계정을 확인할 수 없습니다.");
       const owner=await storeGet("kv","drive-owner");
       if(owner && owner!==account.sub)throw Error("이 기기는 다른 Google 계정에 연결돼 있습니다. 자료를 백업하고 이 기기 자료를 삭제한 뒤 다시 연결해 주세요.");
       if(!owner && !confirm(account.email+" 계정을 이 기기의 자료와 연결할까요?"))throw Error("계정 연결을 취소했습니다.");
       await storePut("kv","drive-owner",account.sub);
+      if(generation!==authGeneration)throw Error("Google 연결 요청이 변경됐습니다.");
+      verifiedSession=true;
       status("Google 연결 완료: "+account.email+". 선택한 파일에만 접근합니다.");
       notesSync?.connected();
-    } catch(error) {token="";tokenExpires=0;throw error;}
+    } catch(error) {if(generation===authGeneration){token="";tokenExpires=0;verifiedSession=false;}throw error;}
   }
   async function driveFetch(path,options={}){
-    const response=await fetch("https://www.googleapis.com/"+path,{...options,signal:options.signal||sessionController.signal,headers:{...options.headers,Authorization:"Bearer "+needToken()},cache:"no-store",referrerPolicy:"no-referrer"});
-    if(response.status===401){token="";throw Error("Google 연결이 만료되었습니다.");}
+    const response=await fetch("https://www.googleapis.com/"+path,{...options,signal:options.signal||sessionController.signal,headers:{...options.headers,Authorization:"Bearer "+needToken(path!=="oauth2/v3/userinfo")},cache:"no-store",referrerPolicy:"no-referrer"});
+    if(response.status===401){token="";verifiedSession=false;throw Error("Google 연결이 만료되었습니다.");}
     if(!response.ok)throw Error("Drive 작업 실패 ("+response.status+"). 접근 권한·용량·네트워크를 확인해 주세요.");
     return response;
   }
@@ -365,7 +374,7 @@ window.BrowserBible = (() => {
   async function forgetDevice(){
     if(busy)throw Error("진행 중인 작업이 끝난 뒤 삭제해 주세요.");
     if(!confirm("이 기기의 성경·찬송가·메모·백업·설정을 모두 삭제할까요? 드라이브 원본은 삭제하지 않습니다. 저장하지 않은 메모는 복구할 수 없습니다."))return;
-    notesSync?.stop();sessionController.abort();token="";tokenExpires=0;worker.terminate();
+    notesSync?.stop();sessionController.abort();authGeneration++;token="";tokenExpires=0;verifiedSession=false;worker.terminate();
     for(const url of imageUrls.values())URL.revokeObjectURL(url);
     db.close();
     await new Promise((resolve,reject)=>{
@@ -409,7 +418,7 @@ window.BrowserBible = (() => {
     notesSync=await createDriveNotesSync({
       get:key=>storeGet("kv",key),put:(key,value)=>storePut("kv",key,value),
       commit:commitSyncedNotes,empty:emptyNotes,validate:validateNotes,safe:assertSafeObject,
-      fetch:driveFetch,connected:()=>Boolean(token&&Date.now()<tokenExpires&&!busy),
+      fetch:driveFetch,connected:()=>Boolean(verifiedSession&&token&&Date.now()<tokenExpires&&!busy),
       paint:paintSyncedNotes,report:reportSync,backup:backupDrive,
     });
     $c("autoSyncEnabled").checked=notesSync.enabled;
@@ -433,7 +442,7 @@ window.BrowserBible = (() => {
     action("closeCloud",()=>{if(!running)return status("성경 자료를 추가하고 성경 열기를 눌러주세요.");$c("cloudDialog").close();});
     action("saveCloudConfig",async()=>{await storePut("kv","public-config",config());status("공개 클라이언트 설정을 이 기기에 저장했습니다.");});
     action("connectDrive",connect);
-    action("disconnectDrive",()=>{if(token&&window.google?.accounts)google.accounts.oauth2.revoke(token,()=>{});sessionController.abort();sessionController=new AbortController();token="";tokenExpires=0;notesSync?.disconnected();status("연결을 해제했습니다. 기기 자료는 남아 있습니다.");});
+    action("disconnectDrive",()=>{if(token&&window.google?.accounts)google.accounts.oauth2.revoke(token,()=>{});sessionController.abort();sessionController=new AbortController();authGeneration++;token="";tokenExpires=0;verifiedSession=false;notesSync?.disconnected();status("연결을 해제했습니다. 기기 자료는 남아 있습니다.");});
     action("pickDriveFiles",()=>pickFiles());action("cloudRestore",()=>pickFiles(true));action("cloudBackup",()=>withBusy(backupDrive));
     const setupLink=()=>PUBLISHED+"#setup="+encodeURIComponent(JSON.stringify(config()));
     action("openPublished",()=>{location.assign(setupLink());});

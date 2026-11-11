@@ -1,4 +1,4 @@
-const CACHE = 'bible-shell-5532db692427cd39';
+const CACHE = 'bible-shell-3510de8430b05c53';
 const ASSETS = ["./.nojekyll", "./app.js", "./books.json", "./browser.js", "./cloud.css", "./connect.css", "./connect.html", "./connect.js", "./db-worker.js", "./drive-sync.js", "./index.html", "./manifest.webmanifest", "./panes.js", "./research.js", "./responsive.css", "./responsive.js", "./styles.css", "./sync-engine.js", "./topics.js", "./topics.json", "./vendor/LICENSE", "./vendor/sql-wasm.js", "./vendor/sql-wasm.wasm"];
 self.addEventListener('message', e => { if (e.data?.type === 'PBS_ACTIVATE') self.skipWaiting(); });
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))));
