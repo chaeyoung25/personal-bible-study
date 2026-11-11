@@ -9,7 +9,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <title>Personal Bible Study</title>
   <link rel="stylesheet" href="./styles.css?v=539fd925d5c5254a">
-  <link rel="stylesheet" href="./responsive.css?v=2bc4680e43c04a8a">
+  <link rel="stylesheet" href="./responsive.css?v=784235445e1de19a">
 <meta name="theme-color" content="#16263f">
   <meta name="apple-mobile-web-app-title" content="Bible Study">
   <link rel="icon" type="image/png" href="./app-icon-192.png">
@@ -157,9 +157,9 @@
     <div class="hymn-resize-corner top-right" data-corner="ne" title="창 크기 조절"></div>
     <div class="hymn-resize-corner bottom-left" data-corner="sw" title="창 크기 조절"></div>
     <div class="hymn-resize-corner bottom-right" data-corner="se" title="창 크기 조절"></div>
-    <header class="hymn-header"><strong>새찬송가</strong><div><button id="dockHymns" title="오른쪽에 나란히 배치">나란히</button><button id="closeHymns" aria-label="찬송가 닫기">×</button></div></header>
+    <header class="hymn-header"><strong>새찬송가</strong><div><button id="toggleHymnSearch" aria-expanded="true">검색</button><button id="hymnReadingMode">성경 함께</button><button id="dockHymns" title="오른쪽에 나란히 배치">나란히</button><button id="closeHymns" aria-label="찬송가 닫기">×</button></div></header>
     <div class="hymn-layout">
-      <aside class="hymn-sidebar"><input id="hymnSearch" placeholder="장 번호 · 제목 · 가사 검색" aria-label="찬송가 검색"><span id="hymnCount" role="status"></span><div id="hymnList"></div></aside>
+      <aside class="hymn-sidebar"><div class="hymn-search-row"><input id="hymnSearch" type="search" enterkeyhint="search" placeholder="장 번호 · 제목 · 가사 검색" aria-label="찬송가 검색"><button id="clearHymnSearch" aria-label="찬송가 검색어 지우기">지우기</button></div><span id="hymnCount" role="status"></span><div id="hymnList"></div></aside>
       <section class="hymn-content"><div class="panel-head"><h2 id="hymnTitle"></h2><div class="hymn-tabs"><button id="showScore" aria-pressed="true">악보</button><button id="showLyrics" aria-pressed="false">가사</button></div></div><div class="score-toolbar"><button id="scoreFit">전체 맞춤</button><button id="scoreZoomOut" title="악보 축소" aria-label="악보 축소">−</button><input id="scoreZoom" type="range" min="25" max="250" value="100" aria-label="악보 확대 비율"><output id="scoreZoomValue">100%</output><button id="scoreZoomIn" title="악보 확대" aria-label="악보 확대">+</button></div><div id="hymnScore"></div><pre id="hymnLyrics" hidden></pre></section>
     </div>
   </dialog>
@@ -182,6 +182,6 @@
   <script src="./research.js?v=7af8b6174f2cc013"></script>
   <script src="./panes.js?v=8f570d57a4b70764"></script>
   <script src="./responsive.js?v=16fc83186edacb90"></script>
-  <script src="./app.js?v=1c8b4c31b5b4dc81"></script>
+  <script src="./app.js?v=79eecf0d35c98409"></script>
 </body>
 </html>

@@ -620,6 +620,26 @@ function bindEvents() {
   let hymns = [], selectedHymn = null, hymnRequest = 0, hymnTimer;
   let scoreScale = 100, scoreFit = true;
   const hymnWindow = $("hymnDialog");
+  let scoreWidth = false;
+  const mobileHymns = () => matchMedia("(max-width: 700px)").matches;
+  const setHymnSearch = open => {
+    hymnWindow.classList.toggle("search-open", open);
+    $("toggleHymnSearch").setAttribute("aria-expanded", String(open));
+    if (open) $("hymnSearch").focus(); else $("hymnSearch").blur();
+  };
+  $("toggleHymnSearch").onclick = () => setHymnSearch(!hymnWindow.classList.contains("search-open"));
+  $("hymnReadingMode").onclick = () => {
+    const split = hymnWindow.classList.toggle("bible-visible");
+    $("hymnReadingMode").textContent = split ? "크게 보기" : "성경 함께";
+  };
+  $("clearHymnSearch").onclick = () => { $("hymnSearch").value = ""; searchHymns(); $("hymnSearch").focus(); };
+  const widthButton = document.createElement("button");
+  widthButton.id = "scoreWidth"; widthButton.textContent = "너비 맞춤";
+  $("scoreFit").after(widthButton);
+  const songNavigation = document.createElement("div");
+  songNavigation.className = "hymn-song-navigation";
+  songNavigation.innerHTML = '<button id="previousHymn" aria-label="이전 찬송가">‹ 이전 곡</button><button id="nextHymn" aria-label="다음 찬송가">다음 곡 ›</button>';
+  hymnWindow.querySelector(".hymn-content").append(songNavigation);
   const resizeHymn = (handle, corner) => {
     handle.onpointerdown = (event) => {
       if (event.button !== 0) return;
@@ -669,7 +689,8 @@ function bindEvents() {
     area.querySelectorAll("img").forEach((img) => {
       if (!img.naturalWidth) return;
       const fit = Math.min((area.clientWidth - 20) / img.naturalWidth, (area.clientHeight - 20) / img.naturalHeight);
-      const scale = scoreFit ? fit : fit * scoreScale / 100;
+      const baseline = scoreWidth ? (area.clientWidth - 20) / img.naturalWidth : fit;
+      const scale = scoreFit ? baseline : baseline * scoreScale / 100;
       img.style.width = `${Math.max(1, img.naturalWidth * scale)}px`;
       img.style.height = `${Math.max(1, img.naturalHeight * scale)}px`;
     });
@@ -687,6 +708,7 @@ function bindEvents() {
   $("dockHymns").onclick = dock;
   const header = hymnWindow.querySelector(".hymn-header");
   header.onpointerdown = (event) => {
+    if (mobileHymns()) return;
     if (event.target.closest("button") || event.button !== 0) return;
     const rect = hymnWindow.getBoundingClientRect();
     hymnWindow.classList.remove("docked");
@@ -709,13 +731,16 @@ function bindEvents() {
     if (hymnWindow.classList.contains("docked")) document.documentElement.style.setProperty("--hymn-width", `${hymnWindow.offsetWidth}px`);
     sizeScore();
   }).observe($("hymnScore"));
-  $("scoreFit").onclick = () => { scoreFit = true; scoreScale = 100; sizeScore(); $("hymnScore").scrollTo(0, 0); };
+  $("scoreFit").onclick = () => { scoreWidth = false; scoreFit = true; scoreScale = 100; sizeScore(); $("hymnScore").scrollTo(0, 0); };
+  widthButton.onclick = () => { scoreWidth = true; scoreFit = true; scoreScale = 100; sizeScore(); $("hymnScore").scrollTo(0, 0); };
   const zoomScore = (value) => { scoreFit = false; scoreScale = Math.max(25, Math.min(250, value)); sizeScore(); };
   $("scoreZoom").oninput = () => zoomScore(Number($("scoreZoom").value));
   $("scoreZoomOut").onclick = () => zoomScore(scoreScale - 25);
   $("scoreZoomIn").onclick = () => zoomScore(scoreScale + 25);
   const showHymn = (hymn) => {
     selectedHymn = hymn;
+    $("previousHymn").disabled = hymn.number <= 1;
+    $("nextHymn").disabled = hymn.number >= 645;
     $("hymnTitle").textContent = `${hymn.number}장 ${hymn.title}`;
     $("hymnLyrics").textContent = hymn.lyrics;
     $("hymnScore").replaceChildren();
@@ -745,14 +770,30 @@ function bindEvents() {
         const button = document.createElement("button");
         button.textContent = `${hymn.number}장 ${hymn.title}`;
         button.dataset.number = hymn.number;
-        button.onclick = () => showHymn(hymn);
+        button.onclick = () => { showHymn(hymn); if (mobileHymns()) setHymnSearch(false); };
         $("hymnList").append(button);
       });
       if (hymns.length) showHymn(hymns.find((hymn) => hymn.number === selectedHymn?.number) || hymns[0]);
       else { $("hymnTitle").textContent = "검색 결과가 없습니다."; $("hymnScore").replaceChildren(); $("hymnLyrics").textContent = ""; }
     } catch (error) { $("hymnCount").textContent = error.message; }
   };
-  $("openHymns").onclick = () => { if (!hymnWindow.open) hymnWindow.show(); dock(); searchHymns(); $("hymnSearch").focus(); };
+  const moveHymn = async delta => {
+    if (!selectedHymn) return;
+    const number = selectedHymn.number + delta;
+    const request = ++hymnRequest;
+    try {
+      const payload = await api(`/api/hymns?q=${number}`);
+      if (request !== hymnRequest) return;
+      const hymn = payload.results.find(item => item.number === number);
+      if (hymn) { showHymn(hymn); setHymnSearch(false); }
+    } catch (error) { $("hymnCount").textContent = error.message; }
+  };
+  $("previousHymn").onclick = () => moveHymn(-1);
+  $("nextHymn").onclick = () => moveHymn(1);
+  $("hymnSearch").onkeydown = event => {
+    if (event.key === "Enter") { event.preventDefault(); clearTimeout(hymnTimer); searchHymns().then(() => { if (hymns.length === 1 && mobileHymns()) setHymnSearch(false); }); }
+  };
+  $("openHymns").onclick = () => { if (!hymnWindow.open) hymnWindow.show(); dock(); searchHymns(); setHymnSearch(!selectedHymn); if (!mobileHymns()) $("hymnSearch").focus(); };
   $("closeHymns").onclick = () => { hymnWindow.close(); document.body.classList.remove("hymn-open"); };
   hymnWindow.addEventListener("close", () => document.body.classList.remove("hymn-open"));
   $("hymnSearch").oninput = () => { clearTimeout(hymnTimer); hymnTimer = setTimeout(searchHymns, 200); };

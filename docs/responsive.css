@@ -168,3 +168,46 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
   .verse-num { padding-top: 3px; }
   .reader, .passage-pane, .topbar, .pane-controls { min-width: 0; max-width: 100%; }
 }
+
+.hymn-search-row { display: flex; gap: 6px; }
+.hymn-search-row input { min-width: 0; flex: 1; width: 100%; }
+.hymn-song-navigation { display: flex; justify-content: space-between; gap: 8px; flex-shrink: 0; padding-top: 8px; }
+.hymn-song-navigation button { flex: 1; }
+#toggleHymnSearch, #hymnReadingMode { display: none; }
+@media (max-width: 700px) {
+  .hymn-dialog {
+    inset: 0 !important; width: 100% !important; max-width: 100% !important;
+    height: var(--visible-height, 100dvh) !important; max-height: 100dvh !important;
+    border: 0; border-radius: 0; margin: 0 !important;
+  }
+  .hymn-dialog.bible-visible { inset: auto 0 0 !important; height: 66dvh !important; border-top: 1px solid var(--line); border-radius: 12px 12px 0 0; }
+  .hymn-resize-edge, .hymn-resize-corner, #dockHymns { display: none; }
+  #toggleHymnSearch, #hymnReadingMode { display: inline-block; }
+  .hymn-header { height: auto; min-height: 52px; padding: 6px 12px; cursor: default; touch-action: auto; }
+  .hymn-header strong { font-size: 16px; }
+  .hymn-header > div { display: flex; gap: 4px; }
+  .hymn-header button { font-size: 12px; padding: 4px 8px; min-height: 40px; }
+  .hymn-header #closeHymns { width: 36px; }
+  .hymn-layout { display: flex; flex-direction: column; flex: 1; min-height: 0; height: auto; }
+  .hymn-sidebar { display: none; flex: 0 1 40%; padding: 10px 12px; overflow: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .hymn-dialog.search-open .hymn-sidebar { display: block; }
+  .hymn-search-row { position: sticky; top: -10px; padding-block: 4px; background: var(--bg); z-index: 1; }
+  .hymn-search-row input { font-size: 16px; min-height: 44px; }
+  #clearHymnSearch { font-size: 12px; }
+  #hymnCount { margin: 4px 0; }
+  #hymnList button { min-height: 44px; line-height: 1.4; font-size: 14px; padding: 8px; }
+  .hymn-content { flex: 1; min-height: 0; padding: 8px 10px max(8px, env(safe-area-inset-bottom)); }
+  .hymn-content .panel-head { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .hymn-content h2 { flex: 1; min-width: 0; font-size: 15px; line-height: 1.4; }
+  .hymn-tabs { flex-shrink: 0; }
+  .hymn-tabs button { font-size: 13px; min-height: 36px; padding: 4px 10px; }
+  .score-toolbar { flex-wrap: nowrap; gap: 5px; margin-bottom: 6px; }
+  .score-toolbar button { min-height: 36px; padding: 4px 8px; font-size: 12px; white-space: nowrap; }
+  #scoreZoom { display: none; }
+  #scoreZoomValue { text-align: center; min-width: 36px; }
+  #hymnScore { padding: 10px; overscroll-behavior: contain; touch-action: pan-x pan-y pinch-zoom; }
+  #hymnScore img { flex-shrink: 0; }
+  #hymnLyrics { padding: 8px; font-size: 18px; line-height: 1.8; }
+  .hymn-song-navigation { padding-top: 6px; }
+  .hymn-song-navigation button { min-height: 40px; font-size: 13px; }
+}
