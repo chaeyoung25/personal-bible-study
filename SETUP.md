@@ -153,7 +153,7 @@ origin-scoped, not isolated by repository path.
 
 ## Build / test
 
-Dependency: sql.js 1.13.0 (MIT), docs/vendor. Run python3 build.py in this folder.
+Dependencies: sql.js 1.15.2 and fflate 0.8.3 (MIT), docs/vendor. Versions and SHA-256 hashes are locked in source/vendor-integrity.json. Official package distributions were SHA-512 verified before installation. Run python3 build.py in this folder; unverified dependency files are rejected.
 Only allowlisted UI assets are copied. Topic Bible text is removed from public
 JSON and reconstructed from an imported translation on the device.
 Run python3 tests/audit.py before publishing.

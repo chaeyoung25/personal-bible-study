@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import re
+import hashlib
 
 docs = Path(__file__).resolve().parents[1] / "docs"
 for path in docs.rglob("*"):
@@ -16,7 +17,10 @@ for path in docs.rglob("*"):
     if path.suffix.lower() in {".js", ".html", ".json", ".css", ".md"}:
         text = path.read_text()
         assert not re.search(r"ya29\.[A-Za-z0-9_-]+|-----BEGIN .*PRIVATE KEY-----|GOCSPX-[A-Za-z0-9_-]+", text), path
-        assert "/Users/chaeyoung2/" not in text, path
+        assert not re.search(r"/(?:Users|home)/[A-Za-z0-9_.-]+/", text), path
+vendor = json.loads((docs / "vendor-integrity.json").read_text())
+for name, metadata in vendor.items():
+    assert hashlib.sha256((docs / "vendor" / name).read_bytes()).hexdigest() == metadata["sha256"], name
 topics = json.loads((docs / "topics.json").read_text())
 assert all(v["text"] == "" for t in topics["topics"] for e in t["entries"] for v in e["verses"])
 assert 'src="/' not in (docs / "index.html").read_text()

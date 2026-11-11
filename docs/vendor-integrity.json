@@ -1,0 +1,7 @@
+{
+  "sql-wasm.js": {"package":"sql.js","version":"1.15.2","sha256":"b46d4bddfdde8a787fc4764bd0a405cdfdf96fbd77e6a4e95446106826ecfa47"},
+  "sql-wasm.wasm": {"package":"sql.js","version":"1.15.2","sha256":"0dfeecda2070b36da0cd4f6afa250af9453de528a983770f85b13d5d6b667572"},
+  "LICENSE": {"package":"sql.js","version":"1.15.2","sha256":"60a3f6e4d7b29b4321359e683b36cf198d24f58e24582070f56e6fa89d5ee2be"},
+  "fflate.min.js": {"package":"fflate","version":"0.8.3","sha256":"462ef8041fc970e3615a20a9dd2b2e3047a073b2da729ef4f02b634bba8b7b83"},
+  "fflate.LICENSE": {"package":"fflate","version":"0.8.3","sha256":"0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551"}
+}

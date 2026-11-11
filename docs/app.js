@@ -128,7 +128,7 @@ function renderConcordance() {
       const button = document.createElement("button");
       button.className = "result";
       const matches = row.analysis.split(/[\r\n]+/).filter((line) => line.includes(`<W${strong}>`)).map((line) => line.replace(/<W([GH]\d+)>/g, "$1").replace(/\*$/, ""));
-      button.innerHTML = `<strong>${referenceLabel(row.book, row.chapter, row.verse)}</strong><span>${escapeHtml(row.btext || matches.join(" · "))}</span><small>${escapeHtml(matches.join(" · "))}</small>`;
+      button.innerHTML = `<strong>${escapeHtml(referenceLabel(row.book, row.chapter, row.verse))}</strong><span>${escapeHtml(row.btext || matches.join(" · "))}</span><small>${escapeHtml(matches.join(" · "))}</small>`;
       button.onclick = async () => {
         state.book = row.book;
         state.chapter = row.chapter;
@@ -390,7 +390,10 @@ function renderPassage(payload, pane = state.activePane) {
     const verses = payload.versions[version] || [];
     const column = document.createElement("article");
     column.className = "version-column";
-    column.innerHTML = `<div class="version-title">${versionName(version)}</div>`;
+    const versionTitle = document.createElement("div");
+    versionTitle.className = "version-title";
+    versionTitle.textContent = BibleTerms.text(versionName(version));
+    column.append(versionTitle);
     verseNumbers.forEach((number) => {
       const verse = verses.find((item) => item.verse === number);
       if (!verse) {
@@ -413,7 +416,8 @@ function renderPassage(payload, pane = state.activePane) {
       row.classList.toggle("underlined", Boolean(state.notes.underlines[key]) && !state.notes.annotations.some((mark) => mark.key === key && mark.type === "underline"));
       row.classList.toggle("selected", context.selectedVerse === verse.verse);
       row.classList.toggle("topic-mark", Boolean(state.notes.highlights[key]?.topicMark));
-      row.innerHTML = `<span class="verse-num">${verse.verse}</span><span class="verse-text">${escapeHtml(verse.btext || "")}</span>`;
+      row.innerHTML = '<span class="verse-num"></span><span class="verse-text"></span>';
+      row.querySelector(".verse-num").textContent = verse.verse;
       const text = verse.btext || "";
       const marks = state.notes.annotations.filter((mark) => mark.key === key && mark.version === version);
       const boundaries = [...new Set([0, text.length, ...marks.flatMap((mark) => [mark.start, mark.end])])].sort((a, b) => a - b);
@@ -571,7 +575,7 @@ async function search() {
   payload.results.forEach((row) => {
     const item = document.createElement("div");
     item.className = "result";
-    item.innerHTML = `<strong>${referenceLabel(row.book, row.chapter, row.verse)}</strong><span>${escapeHtml(row.btext || "")}</span>`;
+    item.innerHTML = `<strong>${escapeHtml(referenceLabel(row.book, row.chapter, row.verse))}</strong><span>${escapeHtml(row.btext || "")}</span>`;
     item.onclick = () => {
       state.book = row.book;
       state.chapter = row.chapter;

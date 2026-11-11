@@ -114,7 +114,7 @@ window.BrowserBible = (() => {
     });
   }
   function initializeWorker() {
-    worker = new Worker(new URL("db-worker.js?v=5321a6c37ca1f3ea",BASE));
+    worker = new Worker(new URL("db-worker.js?v=df4f9200ff9e054b",BASE));
     worker.onmessage = ({data}) => {
       const task = pending.get(data.id); if (!task) return;
       pending.delete(data.id); data.error ? task.reject(Error(data.error)) : task.resolve(data.result);

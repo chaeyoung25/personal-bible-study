@@ -28,6 +28,12 @@
   public sharing, persisted token or always-running server is introduced.
 - Parameterized SQLite queries in a Worker; two-database LRU, query_only enabled.
   File signature/schema, size, notes structure and prototype keys are validated.
+- Imported version names and verse labels use text nodes; search references and
+  rich snippets are escaped before HTML insertion. Metadata is untrusted too.
+- Vendored sql.js 1.15.2 and fflate 0.8.3 are version/hash locked in
+  source/vendor-integrity.json. Official distributions were SHA-512 verified;
+  builds and CI verify the installed SHA-256 hashes. Worker imports are versioned
+  together so stale JavaScript and WebAssembly files cannot mix across releases.
 - CSP restricts scripts to self and official Google Identity/Picker. No analytics.
   sql.js is vendored; no SQL runtime CDN dependency.
 - Service-worker caching is public-asset allowlisted and same-origin only.

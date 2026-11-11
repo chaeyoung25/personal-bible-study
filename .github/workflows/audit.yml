@@ -16,3 +16,4 @@ jobs:
           node-version: '24'
       - run: node tests/sync-engine.cjs
       - run: node tests/migration-unit.cjs
+      - run: node tests/security-unit.cjs

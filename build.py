@@ -11,10 +11,14 @@ APP = ROOT.parent
 OUT = ROOT / "docs"
 OUT.mkdir(exist_ok=True)
 (OUT / "vendor").mkdir(exist_ok=True)
+vendor_lock = json.loads((ROOT / "source" / "vendor-integrity.json").read_text())
 for name in ("sql-wasm.js", "sql-wasm.wasm", "LICENSE", "fflate.min.js", "fflate.LICENSE"):
     source = Path("/private/tmp/bible-sql-vendor") / name
-    if source.exists():
+    expected = vendor_lock[name]["sha256"]
+    if source.exists() and hashlib.sha256(source.read_bytes()).hexdigest() == expected:
         shutil.copyfile(source, OUT / "vendor" / name)
+    elif not (OUT / "vendor" / name).exists() or hashlib.sha256((OUT / "vendor" / name).read_bytes()).hexdigest() != expected:
+        raise SystemExit("Missing or unverified dependency: " + name)
 assets = ("styles.css", "responsive.css", "polish.css", "terminology.js", "app.js", "panes.js", "research.js", "topics.js", "responsive.js")
 for name in assets:
     content = (APP / "static" / name).read_text()
@@ -50,7 +54,7 @@ for topic in topics["topics"]:
 for path in (ROOT / "source").iterdir():
     if path.is_file() and path.name != "cloud.html":
         if path.name == "browser.js":
-            worker_revision = hashlib.sha256((ROOT / "source" / "db-worker.js").read_bytes() + (APP / "static" / "terminology.js").read_bytes()).hexdigest()[:16]
+            worker_revision = hashlib.sha256((ROOT / "source" / "db-worker.js").read_bytes() + (APP / "static" / "terminology.js").read_bytes() + (ROOT / "source" / "vendor-integrity.json").read_bytes()).hexdigest()[:16]
             (OUT / path.name).write_text(path.read_text().replace("__WORKER_VERSION__", worker_revision))
         else:
             shutil.copyfile(path, OUT / path.name)

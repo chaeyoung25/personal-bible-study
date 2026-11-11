@@ -64,6 +64,14 @@ const initializeSQL=require('../docs/vendor/sql-wasm.js');
    return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
   });
   assert.equal(storedHash,crypto.createHash('sha256').update(bible).digest('hex'));
+  const injection=await page.evaluate(()=>{
+   const attack='<img data-audit-probe src="data:,probe">';
+   state.library.translations.push({id:'untrusted.bdb',name:'Untrusted '+attack});
+   state.versions=['untrusted.bdb'];
+   renderPassage({versions:{'untrusted.bdb':[{book:43,chapter:3,verse:attack,btext:'Text '+attack}]}},state.activePane);
+   return {nodes:document.querySelectorAll('[data-audit-probe]').length,title:document.querySelector('.active-pane .version-title').textContent,verse:document.querySelector('.active-pane .verse-num').textContent};
+  });
+  assert.equal(injection.nodes,0);assert(injection.title.includes('<img'));assert(injection.verse.includes('<img'));
   console.log('PASS: preferred terminology in passages, search aliases, original analysis, hymn lyrics/title, notes/tags, selection copy and export; annotation offsets and original DB bytes retained.');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

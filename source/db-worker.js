@@ -1,6 +1,6 @@
-importScripts("./vendor/sql-wasm.js");
-importScripts("./terminology.js" + new URL(self.location.href).search);
-const sqlReady = initSqlJs({ locateFile: file => new URL("./vendor/" + file, self.location.href).href });
+const assetVersion = new URL(self.location.href).search;
+importScripts("./vendor/sql-wasm.js" + assetVersion, "./terminology.js" + assetVersion);
+const sqlReady = initSqlJs({ locateFile: file => new URL("./vendor/" + file + assetVersion, self.location.href).href });
 const handles = new Map();
 function rows(db, sql, params = []) {
   const statement = db.prepare(sql);

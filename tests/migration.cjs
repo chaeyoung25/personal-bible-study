@@ -18,7 +18,7 @@ const original=JSON.parse(fs.readFileSync(path.join(root,"user_data/notes.json")
     await BrowserBible.api("/api/notes",{method:"POST",body:JSON.stringify(notes)});
   });
   await page.locator("#"+(process.env.BIBLE_BULK_INPUT||"migrationFile")).setInputFiles(path.join(exportsDir,archive));
-  await page.waitForFunction(()=>/전체 이전 완료|이전 미완료/.test(document.querySelector("#migrationStatus").textContent),{timeout:600000});
+  await page.waitForFunction(()=>/전체 이전 완료|(?:이전|가져오기) 미완료/.test(document.querySelector("#migrationStatus").textContent),null,{timeout:600000});
   const message=await page.locator("#migrationStatus").textContent();
   assert(message.includes("전체 이전 완료"),message);
   const notes=await page.evaluate(()=>BrowserBible.api("/api/notes"));
