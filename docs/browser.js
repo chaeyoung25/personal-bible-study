@@ -74,14 +74,14 @@ window.BrowserBible = (() => {
       const heading=document.createElement("strong");heading.textContent=(key[1]||"북마크")+" · "+({notes:"메모",tags:"태그",highlights:"형광펜",underlines:"밑줄",annotations:"선택 표시"}[key[0]]||key[0])+" 동시 수정";
       section.append(heading);
       for(const choice of conflict.choices){
-        const content=document.createElement("pre");content.textContent=choice.value===null?"[삭제됨]":typeof choice.value==="string"?choice.value:JSON.stringify(choice.value,null,2);
+        const content=document.createElement("pre");content.textContent=BibleTerms.text(choice.value===null?"[삭제됨]":typeof choice.value==="string"?choice.value:JSON.stringify(choice.value,null,2));
         const use=document.createElement("button");use.textContent="이 내용 사용";
         use.onclick=()=>notesSync.resolve(conflict.key,choice.value).catch(error=>status(error.message));
         section.append(content,use);
       }
       if(key[0]==="notes"){
         const merged=document.createElement("textarea");merged.setAttribute("aria-label","충돌 메모 합치기");
-        merged.value=drafts.get(conflict.key)??conflict.choices.filter(c=>typeof c.value==="string").map(c=>c.value).join("\n\n");
+        merged.value=BibleTerms.text(drafts.get(conflict.key)??conflict.choices.filter(c=>typeof c.value==="string").map(c=>c.value).join("\n\n"));
         const save=document.createElement("button");save.textContent="합친 메모 저장";
         save.onclick=()=>notesSync.resolve(conflict.key,merged.value).catch(error=>status(error.message));
         section.append(merged,save);
@@ -114,7 +114,7 @@ window.BrowserBible = (() => {
     });
   }
   function initializeWorker() {
-    worker = new Worker(new URL("db-worker.js",BASE));
+    worker = new Worker(new URL("db-worker.js?v=5321a6c37ca1f3ea",BASE));
     worker.onmessage = ({data}) => {
       const task = pending.get(data.id); if (!task) return;
       pending.delete(data.id); data.error ? task.reject(Error(data.error)) : task.resolve(data.result);
@@ -287,7 +287,7 @@ window.BrowserBible = (() => {
         const texts = new Map(rows.map(r=>[[r.book,r.chapter,r.verse].join("-"),r.btext]));
         for (const topic of data.topics) for(const entry of topic.entries) for(const verse of entry.verses) verse.text=verse.text||texts.get(verse.key)||"";
       }
-      return data;
+      return BibleTerms.content(data);
     }
     if (route==="/api/passage") {
       const versions={};
@@ -328,7 +328,7 @@ window.BrowserBible = (() => {
       const source=catalog.find(f=>f.kind==="hymns"&&f.name==="새찬송가")||catalog.find(f=>f.kind==="hymns");
       if(!source)throw Error("새찬송가.hdb 파일을 추가해 주세요.");
       const rows=await callWorker("hymns",{source:source.id});
-      const parser=new DOMParser(),query=(q.get("q")||"").normalize("NFC");
+      const parser=new DOMParser(),query=BibleTerms.text(q.get("q")||"").normalize("NFC");
       const results=rows.map(row=>{
         const lyrics=parser.parseFromString((row.htext||"").replace(/<br\s*\/?>/gi,"\n"),"text/html").body.textContent.trim();
         return {number:row.chapter,title:row.title,lyrics,images:catalog.filter(f=>f.kind==="image"&&f.id.match(/^new_(\d+)\./)?.[1]===String(row.chapter)).map(f=>f.id)};

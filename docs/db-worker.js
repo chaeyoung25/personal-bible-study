@@ -1,4 +1,5 @@
 importScripts("./vendor/sql-wasm.js");
+importScripts("./terminology.js" + new URL(self.location.href).search);
 const sqlReady = initSqlJs({ locateFile: file => new URL("./vendor/" + file, self.location.href).href });
 const handles = new Map();
 function rows(db, sql, params = []) {
@@ -6,7 +7,7 @@ function rows(db, sql, params = []) {
   try {
     statement.bind(params);
     const result = [];
-    while (statement.step()) result.push(statement.getAsObject());
+    while (statement.step()) result.push(BibleTerms.content(statement.getAsObject()));
     return result;
   } finally { statement.free(); }
 }
@@ -47,7 +48,7 @@ async function execute(message) {
   }
   const db = await database(params.version || params.source);
   if (action === "passage") return rows(db, "SELECT book,chapter,verse,btext FROM Bible WHERE book=? AND chapter=? ORDER BY verse", [params.book, params.chapter]);
-  if (action === "search") return rows(db, "SELECT book,chapter,verse,btext FROM Bible WHERE btext LIKE ? ORDER BY book,chapter,verse LIMIT 200", ["%" + params.query + "%"]);
+  if (action === "search") return rows(db, "SELECT book,chapter,verse,btext FROM Bible WHERE REPLACE(btext, '침례', '세례') LIKE ? ORDER BY book,chapter,verse LIMIT 200", ["%" + BibleTerms.text(params.query) + "%"]);
   if (action === "hymns") return rows(db, "SELECT chapter,title,htext FROM hymnal WHERE chapter BETWEEN 1 AND 645 ORDER BY chapter");
   if (action === "topicTexts") return rows(db, "SELECT book,chapter,verse,btext FROM Bible");
   if (action === "concordance") {

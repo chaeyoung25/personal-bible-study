@@ -57,7 +57,7 @@ function researchExportText() {
     });
     Object.keys(state.notes.notes).filter((key) => key.startsWith(`${state.book}-${state.chapter}-`)).forEach(memo);
   }
-  return lines.join("\n");
+  return BibleTerms.text(lines.join("\n"));
 }
 
 function researchExportHtml(text) {
@@ -109,7 +109,7 @@ function renderPassageGuide() {
     const title = document.createElement("h3");
     title.className = "guide-heading"; title.textContent = label;
     const content = document.createElement("p");
-    content.textContent = text;
+    content.textContent = BibleTerms.text(text);
     section.append(title, content); target.append(section);
   };
   const tags = state.notes.tags?.[key] || [];
@@ -131,7 +131,7 @@ function renderPassageGuide() {
   }
   topics.forEach((topic) => {
     const button = document.createElement("button");
-    button.className = "guide-topic"; button.textContent = topic.name;
+    button.className = "guide-topic"; button.textContent = BibleTerms.text(topic.name);
     button.onclick = () => {
       $("topicSelect").value = topic.id;
       $("topicQuery").value = "";

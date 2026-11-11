@@ -1,7 +1,7 @@
 function renderTopics() {
   const selected = $("topicSelect").value;
-  const query = $("topicQuery").value.trim().normalize("NFC").toLocaleLowerCase();
-  const topics = state.topics.topics.filter((topic) => !selected || topic.id === selected);
+  const query = BibleTerms.text($("topicQuery").value).trim().normalize("NFC").toLocaleLowerCase();
+  const topics = BibleTerms.content(state.topics.topics).filter((topic) => !selected || topic.id === selected);
   const entries = topics.flatMap((topic) => topic.entries.map((entry) => ({ ...entry, topic: topic.name })));
   const filtered = entries.filter((entry) => `${entry.reference} ${entry.title} ${entry.topic} ${entry.verses.map((verse) => verse.text).join(" ")}`.normalize("NFC").toLocaleLowerCase().includes(query));
   if ($("topicSort").value === "bible") filtered.sort((a, b) => a.book - b.book || a.chapter - b.chapter || a.start - b.start || a.number - b.number);
@@ -112,7 +112,7 @@ function bindTopics() {
   state.topics.topics.forEach((topic) => {
     const option = document.createElement("option");
     option.value = topic.id;
-    option.textContent = `${topic.name} · ${topic.entries.length}선`;
+    option.textContent = BibleTerms.text(`${topic.name} · ${topic.entries.length}선`);
     $("topicSelect").append(option);
   });
   $("topicSelect").value = "1";

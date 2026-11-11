@@ -15,7 +15,7 @@ for name in ("sql-wasm.js", "sql-wasm.wasm", "LICENSE", "fflate.min.js", "fflate
     source = Path("/private/tmp/bible-sql-vendor") / name
     if source.exists():
         shutil.copyfile(source, OUT / "vendor" / name)
-assets = ("styles.css", "responsive.css", "polish.css", "app.js", "panes.js", "research.js", "topics.js", "responsive.js")
+assets = ("styles.css", "responsive.css", "polish.css", "terminology.js", "app.js", "panes.js", "research.js", "topics.js", "responsive.js")
 for name in assets:
     content = (APP / "static" / name).read_text()
     content = content.replace("localStorage.", "BrowserBible.settings.")
@@ -49,7 +49,11 @@ for topic in topics["topics"]:
 (OUT / "topics.json").write_text(json.dumps(topics, ensure_ascii=False))
 for path in (ROOT / "source").iterdir():
     if path.is_file() and path.name != "cloud.html":
-        shutil.copyfile(path, OUT / path.name)
+        if path.name == "browser.js":
+            worker_revision = hashlib.sha256((ROOT / "source" / "db-worker.js").read_bytes() + (APP / "static" / "terminology.js").read_bytes()).hexdigest()[:16]
+            (OUT / path.name).write_text(path.read_text().replace("__WORKER_VERSION__", worker_revision))
+        else:
+            shutil.copyfile(path, OUT / path.name)
 if not (OUT / "vendor" / "sql-wasm.wasm").exists():
     raise SystemExit("Missing vendored sql.js files. See SETUP.md.")
 # Give every script/style a content-specific URL, including on the first visit

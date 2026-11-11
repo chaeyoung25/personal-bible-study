@@ -151,7 +151,7 @@ function fillSelect(select, items, selected, includeBlank = false) {
   items.forEach((item) => {
     const option = document.createElement("option");
     option.value = item.id;
-    option.textContent = item.name;
+    option.textContent = BibleTerms.text(item.name);
     if (item.id === selected) option.selected = true;
     select.append(option);
   });
@@ -194,8 +194,8 @@ function renderNotes() {
   const key = noteKey();
   $("noteRef").textContent = referenceLabel(state.book, state.chapter, state.selectedVerse);
   $("noteText").placeholder = state.selectedVerse ? "구절에 대한 메모" : "현재 장에 대한 메모";
-  $("noteText").value = state.notes.notes[key] || "";
-  $("noteTags").value = (state.notes.tags?.[key] || []).join(", ");
+  $("noteText").value = BibleTerms.text(state.notes.notes[key] || "");
+  $("noteTags").value = BibleTerms.text((state.notes.tags?.[key] || []).join(", "));
   $("deleteNote").disabled = !state.notes.notes[key];
   renderSaved();
 }
@@ -219,7 +219,7 @@ function openTags(keys, rect) {
   state.tagKeys = [...new Set(keys)];
   state.notes.tags ||= {};
   state.tagShared = (state.notes.tags[state.tagKeys[0]] || []).filter((tag) => state.tagKeys.every((key) => (state.notes.tags[key] || []).includes(tag)));
-  $("markTags").value = state.tagShared.join(", ");
+  $("markTags").value = BibleTerms.text(state.tagShared.join(", "));
   const [book, chapter, verse] = state.tagKeys[0].split("-").map(Number);
   $("tagRef").textContent = `${referenceLabel(book, chapter, verse)}${state.tagKeys.length > 1 ? ` 외 ${state.tagKeys.length - 1}개 구절` : ""} 태그`;
   $("tagStatus").textContent = "";
@@ -316,7 +316,7 @@ function renderVersionSelectors() {
 function renderSaved() {
   const filter = $("savedFilter").value;
   const source = filter === "all" ? { ...state.notes.underlines, ...state.notes.highlights, ...state.notes.notes } : filter === "highlights" ? state.notes.highlights : filter === "underlines" ? state.notes.underlines : state.notes.notes;
-  const normalize = (value) => String(value || "").normalize("NFC").trim().toLocaleLowerCase();
+  const normalize = (value) => BibleTerms.text(value).normalize("NFC").trim().toLocaleLowerCase();
   const query = normalize($("savedQuery").value);
   const tag = normalize($("savedTag").value).replace(/^#/, "");
   const entries = Object.entries(source).filter(([key, value]) => {
@@ -336,7 +336,7 @@ function renderSaved() {
     item.className = "result";
     item.style.textAlign = "left";
     item.innerHTML = `<strong>${referenceLabel(book, chapter, verse)}</strong><span>${escapeHtml(typeof value === "string" ? value : value.text || "")}</span>`;
-    if (state.notes.tags?.[key]?.length) { const tags = document.createElement("small"); tags.textContent = state.notes.tags[key].map((tag) => `#${tag}`).join(" "); item.append(tags); }
+    if (state.notes.tags?.[key]?.length) { const tags = document.createElement("small"); tags.textContent = BibleTerms.text(state.notes.tags[key].map((tag) => `#${tag}`).join(" ")); item.append(tags); }
     item.onclick = async () => {
       state.book = book;
       state.chapter = chapter;
@@ -366,6 +366,7 @@ async function saveNotes() {
 }
 
 function renderPassage(payload, pane = state.activePane) {
+  payload = BibleTerms.content(payload);
   if (pane) {
     pane.passage = payload;
     if (pane === state.activePane) {
@@ -438,7 +439,7 @@ function renderPassage(payload, pane = state.activePane) {
 }
 
 function escapeHtml(text) {
-  return text.replace(/[&<>"']/g, (char) => ({
+  return BibleTerms.text(text).replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
