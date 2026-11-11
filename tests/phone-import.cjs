@@ -2,7 +2,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||require("node:path").joi
 const fs=require("node:fs"),path=require("node:path"),assert=require("node:assert/strict"),zip=require("../docs/vendor/fflate.min.js");
 const docs=path.resolve(__dirname,"../docs"),original=path.resolve(__dirname,"../../data");
 const bible=path.join(original,"bethlehem",fs.readdirSync(path.join(original,"bethlehem")).find(name=>name.normalize("NFC")==="개역개정.bdb"));
-const bundle=zip.zipSync({"phone-folder/":new Uint8Array(0),"phone-folder/개역개정.bdb":new Uint8Array(fs.readFileSync(bible)),"phone-folder/new_50.jpg":new Uint8Array(fs.readFileSync(path.join(original,"hymn_scores/new_50.jpg")))});
+const bundle=zip.zipSync({"__MACOSX/._phone-folder":zip.strToU8("AppleDouble metadata"),"__MACOSX/phone-folder/._국한문병기.bdb":zip.strToU8("not SQLite"),"phone-folder/.DS_Store":zip.strToU8("Finder metadata"),"phone-folder/._개역개정.bdb":zip.strToU8("not SQLite"),"phone-folder/":new Uint8Array(0),"phone-folder/개역개정.bdb":new Uint8Array(fs.readFileSync(bible)),"phone-folder/new_50.jpg":new Uint8Array(fs.readFileSync(path.join(original,"hymn_scores/new_50.jpg")))});
 (async()=>{
  const browser=await chromium.launch({channel:"chrome",headless:true});
  try{

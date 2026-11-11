@@ -169,6 +169,7 @@ window.BrowserBible = (() => {
   async function importOne(name,buffer) {
     const id = name.normalize("NFC");
     if (id.includes("/") || id.includes("\\") || buffer.byteLength>128*1048576) throw Error("허용되지 않는 파일 또는 너무 큰 파일입니다.");
+    if(id.startsWith("._")||id===".DS_Store")return;
     const ext = id.split(".").pop().toLowerCase();
     if (ext === "json") {
       if (buffer.byteLength>8*1048576) throw Error("메모 파일이 너무 큽니다.");
@@ -197,6 +198,7 @@ window.BrowserBible = (() => {
     return withBusy(async()=>{
       let count=0;
       for (const file of files) {
+        if(file.name.startsWith("._")||file.name===".DS_Store"||file.webkitRelativePath?.split("/").includes("__MACOSX"))continue;
         if(/\.zip$/i.test(file.name)){
           if(file.size>2*1073741824)throw Error("전체 자료 ZIP이 2GB를 넘습니다.");
           await importMigration(file.stream());count++;continue;
@@ -430,6 +432,7 @@ window.BrowserBible = (() => {
             for(const file of data.docs){
               const metadata=await driveFetch("drive/v3/files/"+encodeURIComponent(file.id)+"?fields=id,name,size,mimeType").then(r=>r.json());
               const migration=/\.zip$/i.test(metadata.name);
+              if(metadata.name.startsWith("._")||metadata.name===".DS_Store")continue;
               if(bundleOnly&&!migration)throw Error("전체 자료 ZIP 하나를 선택해 주세요.");
               if(Number(metadata.size)>(migration?2*1073741824:128*1048576))throw Error("자료 파일이 너무 큽니다.");
               if(restore&&!/\.json$/i.test(metadata.name))throw Error("메모 백업 JSON을 선택해 주세요.");

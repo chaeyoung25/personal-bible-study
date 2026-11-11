@@ -54,10 +54,12 @@
         const name=file.name.normalize("NFC");
         if(name.includes("\\")||name.startsWith("/")||name.split("/").some(p=>p===".."||p==="."))throw Error("안전하지 않은 이전 경로");
         if(name.endsWith("/"))return;
+        const base=name.split("/").pop();
+        const sidecar=name.split("/").includes("__MACOSX")||base.startsWith("._")||base===".DS_Store";
+        if(sidecar&&!manifest)return;
         if(names.has(name))throw Error("중복 파일 경로");
         names.add(name);
         if(!manifest&&!generic&&name!=="migration-manifest.json"){generic=true;chain=chain.then(()=>io.prepare(0,null)).catch(error=>{failure=error;});}
-        const base=name.split("/").pop();
         if(generic){
           if(/[.]zip$/i.test(base))throw Error("ZIP 안에 또 ZIP이 들어 있습니다. 바깥 압축만 풀고 안의 '성경앱-전체이전…zip' 파일 하나를 선택해 주세요.");
           if(!/[.](bdb|sdb|cdb|hdb)$/i.test(base)&&!new RegExp("^(new|old)_[0-9]+[.](jpg|jpeg|png)$","i").test(base)&&!["notes.json","topics.json"].includes(base))return;
@@ -112,6 +114,8 @@
               if(hash!==entry.sha256)throw Error("이전 파일 무결성 검사 실패: "+name);
               if(name==="personal/notes.json"||name==="personal/topics.json"){
                 const value=JSON.parse(decoder.decode(bytes));io.safe(value);personal[name]=value;
+              }else if(sidecar){
+                await io.archiveFile(name,bytes.buffer);
               }else if(/^data\/bethlehem\/[^/]+\.(?:bdb|sdb|cdb|hdb)$/i.test(name)||/^data\/hymn_scores\/(?:new|old)_\d+\.(?:jpe?g|png)$/i.test(name)){
                 await io.importFile(name.split("/").pop(),bytes.buffer,hash);
               }else await io.archiveFile(name,bytes.buffer);
