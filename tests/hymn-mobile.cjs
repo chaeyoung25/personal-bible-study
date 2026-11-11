@@ -40,6 +40,31 @@ const find=name=>path.join(data,fs.readdirSync(data).find(file=>file.normalize('
   await page.locator('#previousHymn').click();
   await page.waitForFunction(()=>document.querySelector('#hymnTitle').textContent.startsWith('50장'));
   await page.locator('#scoreFit').click();
+  // Check viewport fallback (including browsers without Fullscreen API).
+  await page.evaluate(()=>document.querySelector('#hymnDialog').requestFullscreen=undefined);
+  for(const [width,height] of [[390,844],[820,1100],[1100,760]]) {
+   await page.setViewportSize({width,height});
+   await page.locator('#fullHymns').click();
+   await page.waitForTimeout(150);
+   assert(await page.locator('#hymnSearch').isHidden());
+   assert(await page.locator('.score-toolbar').isHidden());
+   const m=await page.evaluate(()=>{
+    const a=document.querySelector('#hymnScore').getBoundingClientRect(),d=document.querySelector('#hymnDialog').getBoundingClientRect();
+    return {height:a.height,width:d.width,top:d.top};
+   });
+   assert(m.height>=height-2,JSON.stringify(m));assert(Math.abs(m.width-width)<2);assert.equal(m.top,0);
+   if(width===820)await page.screenshot({path:'/private/tmp/bible-hymn-fullscreen-tablet.png'});
+   await page.locator('#exitFullHymns').click();
+   assert(await page.locator('.score-toolbar').isVisible());
+  }
+  // Native fullscreen also returns to the hymn without closing it.
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>delete document.querySelector('#hymnDialog').requestFullscreen);
+  await page.locator('#fullHymns').click();
+  await page.waitForTimeout(150);
+  await page.locator('#exitFullHymns').click();
+  assert(await page.locator('#hymnDialog').isVisible());
+  await page.waitForTimeout(150);
   await page.screenshot({path:'/private/tmp/bible-hymn-mobile.png'});
   await page.locator('#hymnReadingMode').click();
   assert(await page.locator('#hymnDialog').evaluate(el=>el.getBoundingClientRect().top)>200);

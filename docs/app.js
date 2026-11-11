@@ -620,6 +620,46 @@ function bindEvents() {
   let hymns = [], selectedHymn = null, hymnRequest = 0, hymnTimer;
   let scoreScale = 100, scoreFit = true;
   const hymnWindow = $("hymnDialog");
+  const fullHymnButton = document.createElement("button");
+  fullHymnButton.id = "fullHymns"; fullHymnButton.textContent = "전체 화면";
+  $("closeHymns").before(fullHymnButton);
+  const exitHymnButton = document.createElement("button");
+  exitHymnButton.id = "exitFullHymns"; exitHymnButton.textContent = "전체 화면 닫기";
+  hymnWindow.append(exitHymnButton);
+  let previousScoreView = null;
+  const restoreHymnView = () => {
+    hymnWindow.classList.remove("score-fullscreen");
+    if (previousScoreView) {
+      ({scoreFit, scoreScale, scoreWidth} = previousScoreView);
+      previousScoreView = null;
+    }
+    requestAnimationFrame(sizeScore);
+    fullHymnButton.focus({preventScroll:true});
+  };
+  fullHymnButton.onclick = () => {
+    previousScoreView = {scoreFit, scoreScale, scoreWidth};
+    scoreFit = true; scoreScale = 100; scoreWidth = false;
+    $("hymnSearch").blur();
+    hymnWindow.classList.add("score-fullscreen");
+    exitHymnButton.focus({preventScroll:true});
+    // The viewport-sized layout also works where the Fullscreen API is absent.
+    if (hymnWindow.requestFullscreen && !document.fullscreenElement)
+      hymnWindow.requestFullscreen().catch(() => {});
+    requestAnimationFrame(sizeScore);
+  };
+  exitHymnButton.onclick = () => {
+    if (document.fullscreenElement === hymnWindow) document.exitFullscreen().catch(() => {});
+    restoreHymnView();
+  };
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement && hymnWindow.classList.contains("score-fullscreen")) restoreHymnView();
+    else requestAnimationFrame(sizeScore);
+  });
+  hymnWindow.addEventListener("keydown", event => {
+    if (event.key === "Escape" && hymnWindow.classList.contains("score-fullscreen")) {
+      event.preventDefault(); exitHymnButton.click();
+    }
+  });
   let scoreWidth = false;
   const mobileHymns = () => matchMedia("(max-width: 700px)").matches;
   const setHymnSearch = open => {

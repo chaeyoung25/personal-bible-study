@@ -211,3 +211,36 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
   .hymn-song-navigation { padding-top: 6px; }
   .hymn-song-navigation button { min-height: 40px; font-size: 13px; }
 }
+
+#exitFullHymns { display: none; }
+.hymn-dialog.score-fullscreen,
+.hymn-dialog.score-fullscreen.bible-visible {
+  position: fixed; inset: 0 !important; margin: 0 !important;
+  width: 100vw !important; height: 100dvh !important;
+  max-width: 100vw !important; max-height: 100dvh !important;
+  min-width: 0 !important; min-height: 0 !important;
+  border: 0; border-radius: 0; background: #ececef;
+  display: flex; flex-direction: column; z-index: 100;
+}
+.hymn-dialog.score-fullscreen .hymn-header,
+.hymn-dialog.score-fullscreen .hymn-sidebar,
+.hymn-dialog.score-fullscreen .panel-head,
+.hymn-dialog.score-fullscreen .score-toolbar,
+.hymn-dialog.score-fullscreen .hymn-song-navigation,
+.hymn-dialog.score-fullscreen .hymn-resize-edge,
+.hymn-dialog.score-fullscreen .hymn-resize-corner { display: none !important; }
+.hymn-dialog.score-fullscreen .hymn-layout { display: flex; flex: 1; height: auto; min-height: 0; }
+.hymn-dialog.score-fullscreen .hymn-content { flex: 1; padding: 0; min-height: 0; }
+.hymn-dialog.score-fullscreen #hymnScore { padding: 10px; }
+.hymn-dialog.score-fullscreen #hymnLyrics { padding: 20px 20px 65px; background: var(--panel); }
+.hymn-dialog.score-fullscreen #exitFullHymns {
+  display: block; position: absolute; bottom: max(12px, env(safe-area-inset-bottom)); right: max(12px, env(safe-area-inset-right));
+  z-index: 10; min-height: 44px; padding: 8px 14px; border-radius: 24px;
+  background: var(--panel); color: var(--text); box-shadow: 0 2px 12px #0003; font-size: 13px;
+}
+@media(max-width:700px) {
+  .hymn-header { flex-wrap: wrap; gap: 4px; }
+  .hymn-header strong { font-size: 14px; }
+  .hymn-header > div { gap: 3px; }
+  .hymn-header button { padding-inline: 6px; font-size: 12px; }
+}
