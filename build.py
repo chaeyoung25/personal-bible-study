@@ -35,6 +35,7 @@ html = html.replace('<button id="openCloud">Drive · 자료 관리</button>', '<
 html = html.replace('<strong>Personal Bible Study</strong><div>', '<strong>Personal Bible Study</strong><div><button id="compactCloud">Drive</button>', 1)
 html = html.replace('<body>', '<body>\n' + (ROOT / "source" / "cloud.html").read_text(), 1)
 html = html.replace('name="referrer" content="no-referrer"', 'name="referrer" content="strict-origin-when-cross-origin"')
+html = html.replace('</head>', '<meta name="theme-color" content="#16263f">\n  <meta name="apple-mobile-web-app-title" content="Bible Study">\n  <link rel="icon" type="image/png" href="./app-icon-192.png">\n  <link rel="apple-touch-icon" sizes="180x180" href="./app-icon-180.png">\n</head>')
 (OUT / "index.html").write_text(html)
 # Only book metadata and topic references are public. Bible quotations stay private.
 tree = ast.parse((APP / "server.py").read_text())

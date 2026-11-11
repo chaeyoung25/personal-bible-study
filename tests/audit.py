@@ -6,7 +6,12 @@ docs = Path(__file__).resolve().parents[1] / "docs"
 for path in docs.rglob("*"):
     if not path.is_file():
         continue
-    assert path.suffix.lower() not in {".bdb", ".sdb", ".cdb", ".hdb", ".jpg", ".jpeg", ".png", ".zip"}, path
+    if path.name in {"app-icon-180.png", "app-icon-192.png", "app-icon-512.png"} and path.parent == docs:
+        size = int(path.stem.rsplit("-", 1)[1])
+        data = path.read_bytes()
+        assert data[:8] == b'\x89PNG\r\n\x1a\n' and int.from_bytes(data[16:20], 'big') == size and int.from_bytes(data[20:24], 'big') == size
+    else:
+        assert path.suffix.lower() not in {".bdb", ".sdb", ".cdb", ".hdb", ".jpg", ".jpeg", ".png", ".zip"}, path
     assert not re.search(r"notes\.json|bible-study-.*\.json|credentials|client_secret", path.name, re.I), path
     if path.suffix.lower() in {".js", ".html", ".json", ".css", ".md"}:
         text = path.read_text()

@@ -5,6 +5,7 @@
 !source/
 !source/**
 !build.py
+!build-icons.cjs
 !SETUP.md
 !SECURITY.md
 !tests/
