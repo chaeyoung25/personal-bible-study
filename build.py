@@ -15,7 +15,7 @@ for name in ("sql-wasm.js", "sql-wasm.wasm", "LICENSE", "fflate.min.js", "fflate
     source = Path("/private/tmp/bible-sql-vendor") / name
     if source.exists():
         shutil.copyfile(source, OUT / "vendor" / name)
-assets = ("styles.css", "responsive.css", "app.js", "panes.js", "research.js", "topics.js", "responsive.js")
+assets = ("styles.css", "responsive.css", "polish.css", "app.js", "panes.js", "research.js", "topics.js", "responsive.js")
 for name in assets:
     content = (APP / "static" / name).read_text()
     content = content.replace("localStorage.", "BrowserBible.settings.")
