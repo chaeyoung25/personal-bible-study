@@ -1,6 +1,36 @@
 const compactScreen = window.matchMedia("(max-width: 1100px)");
 let drawerReturnFocus = null;
 
+function renderCompactVersions(grid) {
+  const pane = grid.closest(".passage-pane");
+  if (!pane) return;
+  let tabs = pane.querySelector(".mobile-version-tabs");
+  if (!tabs) {
+    tabs = document.createElement("nav");
+    tabs.className = "mobile-version-tabs";
+    tabs.setAttribute("aria-label", "읽을 역본 선택");
+    grid.before(tabs);
+  }
+  const columns = [...grid.querySelectorAll(".version-column")];
+  const previous = pane.dataset.mobileVersion;
+  let selected = Math.max(0, columns.findIndex(column => column.querySelector(".version-title").textContent === previous));
+  tabs.replaceChildren();
+  const choose = index => {
+    selected = index;
+    pane.dataset.mobileVersion = columns[index].querySelector(".version-title").textContent;
+    columns.forEach((column, i) => column.classList.toggle("mobile-version-active", i === index));
+    [...tabs.children].forEach((button, i) => button.setAttribute("aria-pressed", String(i === index)));
+  };
+  columns.forEach((column, index) => {
+    const button = document.createElement("button");
+    button.textContent = column.querySelector(".version-title").textContent;
+    button.onclick = () => choose(index);
+    tabs.append(button);
+  });
+  if (columns.length) choose(selected);
+  tabs.hidden = columns.length < 2;
+}
+
 function setStudyDrawer(name = null) {
   if (!compactScreen.matches) name = null;
   const opening = Boolean(name);

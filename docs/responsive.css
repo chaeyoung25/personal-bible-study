@@ -125,3 +125,46 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
   .pane-controls { padding-block: 4px; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+/* Reading uses the available viewport, never desktop-width offscreen columns. */
+.mobile-version-tabs { display: none; }
+@media (max-width: 1100px) {
+  .passage-pane > .chapter-grid,
+  .passage-pane > .chapter-grid.aligned {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none; grid-auto-flow: row; grid-auto-columns: auto;
+    align-content: start; align-items: start;
+  }
+  .passage-pane > .chapter-grid > .version-column {
+    display: block; grid-row: auto; min-width: 0;
+  }
+  .passage-pane .verse { align-items: start; }
+  .compact-panes:has(select option:only-child) { display: none; }
+}
+@media (max-width: 700px) {
+  .compact-nav { padding: 5px 10px; gap: 4px; }
+  .compact-nav strong { display: none; }
+  .compact-nav > div { width: 100%; gap: 4px; }
+  .compact-nav button { padding: 5px 2px; min-height: 40px; font-size: 12px; }
+  .topbar { padding: 6px 12px; gap: 4px; flex-wrap: nowrap; align-items: center; }
+  .topbar > div:first-child { width: auto; flex: 1; }
+  .topbar h1 { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #subtitle { display: none; }
+  .toolbar { width: auto; flex-shrink: 0; justify-content: flex-end; gap: 2px; }
+  .toolbar button, .toolbar select { min-height: 36px; height: 36px; }
+  #comparisonLayout, #chapterSelect, #prevChapter, #nextChapter { display: none; }
+  .pane-controls { display: grid; grid-template-columns: minmax(90px, 1fr) 64px minmax(70px, 1fr) 32px 32px; padding: 6px 10px; }
+  .pane-controls select { width: 100%; min-width: 0; padding-inline: 4px; font-size: 13px; }
+  .pane-controls button { width: 32px; min-width: 0; }
+  .mobile-version-tabs:not([hidden]) { display: flex; flex-shrink: 0; gap: 6px; overflow-x: auto; padding: 6px 12px; border-bottom: 1px solid var(--line); }
+  .mobile-version-tabs button { flex: 0 0 auto; min-height: 36px; padding: 5px 12px; font-size: 13px; }
+  .mobile-version-tabs button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .passage-pane > .chapter-grid,
+  .passage-pane > .chapter-grid.aligned { display: block; padding: 0 16px 24px; overflow-x: hidden; }
+  .passage-pane > .chapter-grid > .version-column { display: none; border: 0; padding: 0; }
+  .passage-pane > .chapter-grid > .version-column.mobile-version-active { display: block; }
+  .version-title { position: static; padding: 10px 0; font-size: 12px; }
+  .passage-pane .verse { grid-template-columns: 20px minmax(0, 1fr); gap: 8px; line-height: var(--line-spacing, 1.65); }
+  .verse-num { padding-top: 3px; }
+  .reader, .passage-pane, .topbar, .pane-controls { min-width: 0; max-width: 100%; }
+}

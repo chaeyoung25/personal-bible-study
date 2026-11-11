@@ -28,6 +28,31 @@ const bundle=zip.zipSync({"__MACOSX/._phone-folder":zip.strToU8("AppleDouble met
   assert.equal(await page.locator("#cloudDialog").isVisible(),false);
   assert.equal(await page.evaluate(()=>window.phoneTestMarker),"preserve");
   assert.equal(await page.evaluate(()=>location.hash),"");
+  // Render several comparison columns with real passage rows, including aligned
+  // desktop mode; narrow screens must not inherit its shared row heights.
+  await page.evaluate(()=>{
+    const first=state.versions[0], rows=state.passage.versions[first];
+    state.versions=[first,"test-second","test-third"];
+    state.comparisonLayout="aligned";
+    renderPassage({versions:{[first]:rows,"test-second":rows,"test-third":rows}},state.activePane);
+  });
+  for(const width of [360,390,600,768,1024,1440]) {
+    await page.setViewportSize({width,height:900});
+    await page.waitForTimeout(100);
+    const metrics=await page.evaluate(()=>({
+      width:innerWidth, page:document.documentElement.scrollWidth,
+      grid:document.querySelector(".active-pane .chapter-grid").getBoundingClientRect().width,
+      columns:[...document.querySelectorAll(".active-pane .version-column")].filter(c=>getComputedStyle(c).display!=="none").map(c=>c.getBoundingClientRect().width),
+      verse:document.querySelector(".active-pane .mobile-version-active .verse").getBoundingClientRect().height,
+    }));
+    assert(metrics.page<=width+1,JSON.stringify(metrics));
+    if(width<=700){assert.equal(metrics.columns.length,1);assert(metrics.columns[0]>width-50);assert(metrics.verse<400);}
+    if(width>=768&&width<=1100){assert.equal(metrics.columns.length,3);assert(metrics.columns.every(w=>w<width/2));}
+  }
+  await page.setViewportSize({width:390,height:844});
+  await page.locator(".active-pane .mobile-version-tabs button").nth(1).click();
+  assert.equal(await page.locator(".active-pane .mobile-version-tabs button").nth(1).getAttribute("aria-pressed"),"true");
+  await page.screenshot({path:"/private/tmp/bible-responsive-phone.png"});
   await page.locator("#compactCloud").click();
   await page.locator("#openBulkReader").click();
   assert.equal(await page.locator("#cloudDialog").isVisible(),false);

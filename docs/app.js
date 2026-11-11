@@ -432,6 +432,7 @@ function renderPassage(payload, pane = state.activePane) {
     });
     grid.append(column);
   });
+  if (typeof renderCompactVersions === "function") renderCompactVersions(grid);
   if (pane) { updatePaneControls(pane); persistPassagePanes(); }
   renderPassageGuide();
 }
