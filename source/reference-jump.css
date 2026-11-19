@@ -1,0 +1,7 @@
+.reference-jump { display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin:0; min-width:0; }
+.reference-jump input { width:155px; min-width:100px; padding:6px 8px; font-size:12px; }
+.pane-controls .reference-jump button { width:auto; min-width:42px; padding:6px 10px; white-space:nowrap; }
+.reference-jump-message { font-size:12px; color:var(--muted); max-width:220px; }
+.reference-jump-message:empty { display:none; }
+.reference-jump input[aria-invalid="true"] { border-color:#b54747; }
+@media(max-width:1100px) { .reference-jump { flex:1 1 100%; } .reference-jump input { flex:1; } }
