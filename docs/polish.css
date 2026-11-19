@@ -149,13 +149,28 @@ button.danger { color: #b34350; background: transparent; box-shadow: none; }
 @media(prefers-reduced-motion:reduce) { button { transition: none; } }
 /* Installed Apple apps can draw a system scroll-edge effect above the page.
    Keep interactive text below that band and pin the opaque header itself. */
+html.apple-standalone {
+  --installed-top-band: calc(36px + env(safe-area-inset-top));
+}
+@media(min-width:1101px) {
+  html.apple-standalone body {
+    padding-top: var(--installed-top-band);
+    background: var(--panel);
+  }
+  html.apple-standalone .rail,
+  html.apple-standalone .study,
+  html.apple-standalone .reader {
+    height: calc(100dvh - var(--installed-top-band));
+    max-height: calc(100dvh - var(--installed-top-band));
+  }
+}
 @media(max-width:1100px) {
   html.apple-standalone body {
     padding-top: var(--installed-nav-height, calc(104px + env(safe-area-inset-top)));
   }
   html.apple-standalone .compact-nav {
     position: fixed; inset: 0 0 auto; z-index: 4;
-    padding-top: calc(36px + env(safe-area-inset-top));
+    padding-top: var(--installed-top-band);
     padding-left: max(12px, env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
     background: var(--panel); overflow: visible;

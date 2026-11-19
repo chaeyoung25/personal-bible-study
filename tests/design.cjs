@@ -21,9 +21,16 @@ const find=name=>path.join(data,fs.readdirSync(data).find(f=>f.normalize('NFC')=
   await page.locator('#cloudDialog').waitFor({state:'hidden'});
   await page.waitForFunction(()=>state.notes.highlights&&state.panes?.length&&document.querySelector('.verse-text'));
   await page.evaluate(async()=>{state.versions=['개역개정.bdb','ESV.bdb'];state.comparisonLayout='aligned';state.book=43;state.chapter=3;renderVersionSelectors();await loadPassage();});
-  for(const [name,width,height] of [['desktop',1440,960],['tablet',820,1180],['ipad',1024,1366],['phone',390,844],['small',360,780]]){
+  for(const [name,width,height] of [['desktop',1440,960],['tablet',820,1180],['ipad',1024,1366],['ipad-landscape',1366,1024],['tablet-landscape',1180,820],['ipad-portrait-again',1024,1366],['phone',390,844],['small',360,780]]){
    await page.setViewportSize({width,height});
    await page.waitForTimeout(100);
+   if(process.env.BIBLE_TEST_INSTALLED && width>1100){
+    const layout=await page.evaluate(()=>{
+     const reader=document.querySelector('.reader').getBoundingClientRect(),rail=document.querySelector('.rail').getBoundingClientRect();
+     return {top:reader.top,bottom:reader.bottom,railTop:rail.top,railBottom:rail.bottom,height:innerHeight,compact:getComputedStyle(document.querySelector('.compact-nav')).display};
+    });
+    assert(layout.top>=36);assert(layout.railTop>=36);assert(layout.bottom<=layout.height+1);assert(layout.railBottom<=layout.height+1);assert.equal(layout.compact,'none');
+   }
    if(process.env.BIBLE_TEST_INSTALLED && width<=1100){
     const layout=await page.evaluate(()=>{
      const nav=document.querySelector('.compact-nav'),button=document.querySelector('#compactHymns');
