@@ -8,6 +8,11 @@ const find=name=>path.join(data,fs.readdirSync(data).find(f=>f.normalize('NFC')=
  try {
   const page=await browser.newPage({viewport:{width:1440,height:960},serviceWorkers:'block'});
   page.setDefaultTimeout(60000);page.on('dialog',d=>d.accept());
+  if(process.env.BIBLE_TEST_INSTALLED)await page.addInitScript(()=>{
+   Object.defineProperty(navigator,'platform',{get:()=> 'MacIntel'});
+   Object.defineProperty(navigator,'maxTouchPoints',{get:()=>5});
+   Object.defineProperty(navigator,'standalone',{get:()=>true});
+  });
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8806');
   await page.locator('#localFiles').setInputFiles([find('개역개정.bdb'),find('ESV.bdb'),find('새찬송가.hdb'),path.join(root,'data/hymn_scores/new_50.jpg')]);
@@ -19,6 +24,13 @@ const find=name=>path.join(data,fs.readdirSync(data).find(f=>f.normalize('NFC')=
   for(const [name,width,height] of [['desktop',1440,960],['tablet',820,1180],['ipad',1024,1366],['phone',390,844],['small',360,780]]){
    await page.setViewportSize({width,height});
    await page.waitForTimeout(100);
+   if(process.env.BIBLE_TEST_INSTALLED && width<=1100){
+    const layout=await page.evaluate(()=>{
+     const nav=document.querySelector('.compact-nav'),button=document.querySelector('#compactHymns');
+     return {installed:document.documentElement.classList.contains('apple-standalone'),position:getComputedStyle(nav).position,top:button.getBoundingClientRect().top,bottom:nav.getBoundingClientRect().bottom,reader:document.querySelector('.reader').getBoundingClientRect().top};
+    });
+    assert(layout.installed);assert.equal(layout.position,'fixed');assert(layout.top>=36);assert(layout.reader>=layout.bottom-1);
+   }
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
    assert(await page.locator('.active-pane .verse-text').first().isVisible());
    const clarity=await page.evaluate(()=>{

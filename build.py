@@ -31,6 +31,8 @@ for name in assets:
         content = content.replace('backups/${result.file}', '${result.file}')
     (OUT / name).write_text(content)
 html = (APP / "static" / "index.html").read_text()
+html = html.replace('initial-scale=1"', 'initial-scale=1, viewport-fit=cover"')
+html = html.replace('</head>', '<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-status-bar-style" content="default">\n</head>')
 html = html.replace('href="/', 'href="./').replace('src="/', 'src="./')
 html = html.replace('<title>', '<meta name="referrer" content="no-referrer">\n  <meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\' \'wasm-unsafe-eval\' https://accounts.google.com https://apis.google.com; style-src \'self\' \'unsafe-inline\' https://accounts.google.com; connect-src \'self\' https://www.googleapis.com https://accounts.google.com https://content.googleapis.com; img-src \'self\' blob: data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://docs.google.com https://drive.google.com; worker-src \'self\'; object-src \'none\'; base-uri \'self\'; form-action \'none\'">\n  <link rel="stylesheet" href="./cloud.css">\n  <link rel="manifest" href="./manifest.webmanifest">\n  <title>', 1)
 html = html.replace('<script src="./topics.js">', '<script src="./vendor/fflate.min.js"></script>\n  <script src="./migration.js"></script>\n  <script src="./sync-engine.js"></script>\n  <script src="./drive-sync.js"></script>\n  <script src="./browser.js"></script>\n  <script src="./topics.js">', 1)

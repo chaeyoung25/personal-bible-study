@@ -1,4 +1,16 @@
 const compactScreen = window.matchMedia("(max-width: 1100px)");
+const installedDisplay = window.matchMedia("(display-mode: standalone)");
+function updateInstalledHeader() {
+  // iPad desktop-mode user agents omit iPad; do not depend on OS versions.
+  const apple = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  document.documentElement.classList.toggle("apple-standalone",
+    apple && (installedDisplay.matches || navigator.standalone === true));
+  const nav = document.querySelector(".compact-nav");
+  if (nav) document.documentElement.style.setProperty("--installed-nav-height", `${nav.getBoundingClientRect().height}px`);
+}
+installedDisplay.addEventListener("change", updateInstalledHeader);
+updateInstalledHeader();
 let drawerReturnFocus = null;
 
 function renderCompactVersions(grid) {
@@ -59,6 +71,10 @@ function updateCompactPanes() {
 }
 
 function initResponsive() {
+  const installedNav = document.querySelector(".compact-nav");
+  if (installedNav) new ResizeObserver(updateInstalledHeader).observe(installedNav);
+  window.addEventListener("resize", updateInstalledHeader);
+  updateInstalledHeader();
   const fitViewport = () => {
     const viewport = window.visualViewport;
     document.documentElement.style.setProperty("--visible-height", `${viewport?.height || innerHeight}px`);
