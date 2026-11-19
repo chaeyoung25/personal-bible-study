@@ -69,6 +69,8 @@ def version_asset(match):
     path = OUT / match.group(2)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
     return match.group(1) + match.group(2) + "?v=" + digest + match.group(3)
+html = html.replace('</head>', '<link rel="stylesheet" href="./panel-layout.css">\n</head>')
+html = html.replace('</body>', '<script src="./panel-layout.js"></script>\n</body>')
 html = re.sub(r'((?:src|href)="\./)([^"?]+\.(?:js|css))(")', version_asset, html)
 (OUT / "index.html").write_text(html)
 allowed = {p.name for p in OUT.iterdir() if p.is_file()}

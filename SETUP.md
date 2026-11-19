@@ -159,3 +159,7 @@ JSON and reconstructed from an imported translation on the device.
 Run python3 tests/audit.py before publishing.
 Serve docs using a static HTTP server for local testing, never the parent folder.
 Live Google authorization requires your actual project and is not mock-verifiable.
+
+## 데스크톱 좌우 패널 접기
+
+본문 상단의 메뉴 숨기기·연구 숨기기로 왼쪽 탐색과 오른쪽 연구 패널을 각각 접을 수 있습니다. 같은 버튼으로 다시 펼치며, 접은 상태는 해당 브라우저에 저장합니다. 두 패널을 모두 접으면 본문이 전체 폭을 사용합니다. 1100px 이하에서는 기존 성경·연구 서랍 메뉴를 사용하고 데스크톱 설정은 유지합니다. source/panel-layout.js와 CSS를 수정하면 build.py가 공개 빌드에 포함합니다.
