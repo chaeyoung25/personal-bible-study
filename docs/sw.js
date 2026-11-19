@@ -1,4 +1,4 @@
-const CACHE = 'bible-shell-5cd160995d902847';
+const CACHE = 'bible-shell-8da9ecee0e4e415a';
 const ASSETS = ["./.nojekyll", "./app-icon-180.png", "./app-icon-192.png", "./app-icon-512.png", "./app-icon.svg", "./app.js", "./books.json", "./browser.js", "./cloud.css", "./connect.css", "./connect.html", "./connect.js", "./db-worker.js", "./drive-sync.js", "./filename-encoding.js", "./index.html", "./manifest.webmanifest", "./migration.js", "./panes.js", "./polish.css", "./research.js", "./responsive.css", "./responsive.js", "./styles.css", "./sync-engine.js", "./terminology.js", "./topics.js", "./topics.json", "./vendor-integrity.json", "./vendor/LICENSE", "./vendor/fflate.LICENSE", "./vendor/fflate.min.js", "./vendor/sql-wasm.js", "./vendor/sql-wasm.wasm"];
 self.addEventListener('message', e => { if (e.data?.type === 'PBS_ACTIVATE') self.skipWaiting(); });
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(async c => {

@@ -162,7 +162,8 @@ input, select, textarea {
   padding: 16px 20px;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 h1 {

@@ -103,9 +103,14 @@ body.dark #saveNote, body.dark #saveCloudConfig, body.dark #connectDrive, body.d
 .cloud-file input::file-selector-button { border: 0; border-radius: 7px; background: var(--accent-soft); color: var(--accent); padding: 8px 12px; font: inherit; margin-right: 10px; }
 .bulk-import > button { border-color: transparent; }
 button.danger { color: #b34350; background: transparent; box-shadow: none; }
-.compact-nav { background: var(--panel); border-color: var(--line); }
+.compact-nav {
+  background: var(--panel); border-color: var(--line);
+  position: relative; z-index: 3;
+  -webkit-backdrop-filter: none; backdrop-filter: none; filter: none;
+}
+.compact-nav strong { color: var(--text); font-weight: 700; }
 .compact-nav > div { gap: 4px; }
-.compact-nav button { border: 0; box-shadow: none; background: transparent; color: var(--muted); border-radius: 10px; }
+.compact-nav button { border: 0; box-shadow: none; background: transparent; color: var(--text); border-radius: 10px; font-weight: 650; text-shadow: none; filter: none; }
 .compact-nav button[aria-expanded="true"] { color: var(--accent); background: var(--accent-soft); }
 .compact-panes { background: var(--bg); }
 .compact-panes select { background: var(--panel); }
@@ -121,10 +126,10 @@ button.danger { color: #b34350; background: transparent; box-shadow: none; }
 #toggleStudy { --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='10' cy='10' r='6.5' fill='none' stroke='black' stroke-width='1.6'/%3E%3Cpath d='m15 15 6 6' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
 #compactHymns { --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 17V5l11-2v12M9 8l11-2' fill='none' stroke='black' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cellipse cx='6' cy='18' rx='3' ry='2.5' fill='none' stroke='black' stroke-width='1.6'/%3E%3Cellipse cx='17' cy='16' rx='3' ry='2.5' fill='none' stroke='black' stroke-width='1.6'/%3E%3C/svg%3E"); }
 #compactTopics { --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 4h12l4 4v12H4zM8 9h5M8 13h8M8 17h6' fill='none' stroke='black' stroke-width='1.6' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E"); }
-@media(min-width:701px) and (max-width:1100px) { .compact-nav button { display: flex; align-items: center; gap: 7px; padding: 8px 10px; } .compact-nav button::before { margin: 0; width: 16px; height: 16px; } }
+@media(min-width:701px) and (max-width:1100px) { .compact-nav button { display: flex; align-items: center; gap: 7px; padding: 8px 10px; font-size: 14px; } .compact-nav button::before { margin: 0; width: 18px; height: 18px; } }
 @media(max-width:700px) {
   .compact-nav { padding: 5px 10px; }
-  .compact-nav button { min-height: 50px; font-size: 10px; font-weight: 600; padding: 6px 4px; }
+  .compact-nav button { min-height: 50px; font-size: 12px; font-weight: 650; padding: 6px 4px; }
   .topbar h1 { font-size: 18px; letter-spacing: -.5px; }
   .toolbar button { font-size: 12px; }
   .toolbar #comparisonLayout { background: var(--control); font-size: 11px; max-width: 86px; }
