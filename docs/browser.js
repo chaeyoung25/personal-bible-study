@@ -91,10 +91,19 @@ window.BrowserBible = (() => {
   }
   async function inventory() {
     catalog = await new Promise((resolve,reject) => {
-      const req = db.transaction("meta").objectStore("meta").getAll();
-      req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+      const tx=db.transaction("meta","readwrite"),meta=tx.objectStore("meta");
+      const req=meta.getAll();let files=[];
+      req.onsuccess=()=>{
+        files=req.result;
+        for(const file of files){
+          const corrected=BibleFilenames.repair(file.name);
+          if(corrected!==file.name){file.name=corrected;meta.put(file,file.id);}
+        }
+      };
+      tx.oncomplete=()=>resolve(files);
+      tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error("자료 이름을 읽지 못했습니다."));
     });
-    $c("localInventory").textContent = catalog.filter(file=>file.kind!=="archive").map(file => file.id + " · " + (file.size/1048576).toFixed(1) + " MB").join("\n") || "저장된 자료가 없습니다.";
+    $c("localInventory").textContent = catalog.filter(file=>file.kind!=="archive").map(file => BibleFilenames.repair(file.id) + " · " + (file.size/1048576).toFixed(1) + " MB").join("\n") || "저장된 자료가 없습니다.";
     $c("openBulkReader").disabled=!catalog.some(file=>file.kind==="translation");
     if(location.origin===new URL(PUBLISHED).origin)$c("openPublished").textContent="성경 본문 보기";
     const archiveTarget=$c("archiveInventory");archiveTarget.replaceChildren();
@@ -167,7 +176,7 @@ window.BrowserBible = (() => {
     try { return await task(); } finally { busy = false; }
   }
   async function importOne(name,buffer) {
-    const id = name.normalize("NFC");
+    const id = BibleFilenames.repair(name);
     if (id.includes("/") || id.includes("\\") || buffer.byteLength>128*1048576) throw Error("허용되지 않는 파일 또는 너무 큰 파일입니다.");
     if(id.startsWith("._")||id===".DS_Store")return;
     const ext = id.split(".").pop().toLowerCase();

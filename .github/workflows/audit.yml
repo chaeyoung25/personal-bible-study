@@ -17,3 +17,4 @@ jobs:
       - run: node tests/sync-engine.cjs
       - run: node tests/migration-unit.cjs
       - run: node tests/security-unit.cjs
+      - run: node tests/filename-encoding.cjs

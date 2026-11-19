@@ -1,5 +1,6 @@
 (function(root){
   "use strict";
+  const filenames=root.BibleFilenames||(typeof require==="function"?require("./filename-encoding.js"):null);
   function mergeNotes(current,incoming){
     const result=structuredClone(current);
     for(const field of ["notes","tags","highlights","underlines","updated"])result[field]||={};
@@ -51,7 +52,7 @@
     const decoder=new TextDecoder();
     const unzip=new lib.Unzip(file=>{
       try{
-        const name=file.name.normalize("NFC");
+        const name=filenames.repair(file.name);
         if(name.includes("\\")||name.startsWith("/")||name.split("/").some(p=>p===".."||p==="."))throw Error("안전하지 않은 이전 경로");
         if(name.endsWith("/"))return;
         const base=name.split("/").pop();
@@ -82,6 +83,7 @@
               manifest=JSON.parse(decoder.decode(bytes));io.safe(manifest);
               if(manifest.format!=="personal-bible-migration"||manifest.schema!==1||!Array.isArray(manifest.files)||manifest.files.length>10000)throw Error("지원하지 않는 이전 파일");
               for(const record of manifest.files){
+                if(typeof record.path==="string")record.path=filenames.repair(record.path);
                 if(typeof record.path!=="string"||!Number.isSafeInteger(record.size)||record.size<0||record.size>128*1048576||!/^[a-f0-9]{64}$/.test(record.sha256)||expected.has(record.path))throw Error("이전 목록 오류");
                 total+=record.size;if(total>2*1073741824)throw Error("이전 자료가 2GB를 넘습니다.");
                 expected.set(record.path,record);
@@ -103,6 +105,7 @@
               manifest=JSON.parse(decoder.decode(bytes));io.safe(manifest);
               if(manifest.format!=="personal-bible-migration"||manifest.schema!==1||!Array.isArray(manifest.files)||manifest.files.length>10000)throw Error("지원하지 않는 이전 파일");
               for(const record of manifest.files){
+                if(typeof record.path==="string")record.path=filenames.repair(record.path);
                 if(typeof record.path!=="string"||!Number.isSafeInteger(record.size)||record.size<0||record.size>128*1048576||!/^[a-f0-9]{64}$/.test(record.sha256)||expected.has(record.path))throw Error("이전 목록 오류");
                 total+=record.size;if(total>2*1073741824)throw Error("이전 자료가 2GB를 넘습니다.");
                 expected.set(record.path,record);
